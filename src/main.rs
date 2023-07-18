@@ -2,7 +2,7 @@ mod encryption;
 mod password;
 
 use clap::{arg, command, Arg, ArgAction, ArgGroup, Command};
-use dialoguer::{theme::ColorfulTheme, Input, Password};
+use dialoguer::{theme::ColorfulTheme, Confirm, Input, Password};
 use password::{get_password, set_password};
 use std::{
     env::current_dir,
@@ -19,22 +19,28 @@ fn main() {
             Command::new("password")
                 .about("Set a security password to access sensible informations")
                 .group(
-                    ArgGroup::new("passwords")
+                    ArgGroup::new("password_action")
                         .required(true)
                         .args(["init", "change"]),
                 )
-                .arg(arg!(-'i' --"init" "Set password for first time").action(ArgAction::SetTrue))
-                .arg(arg!(-'c' --"change"  [INITIAL_PASSWORD] "Change password when set")),
+                .arg(
+                    arg!(-'i' --"init" [NEW_PASSWORD] "Set password for first time")
+                        .action(ArgAction::Set),
+                )
+                .arg(
+                    arg!(-'c' --"change"  [INITIAL_PASSWORD] "Change password when set")
+                        .action(ArgAction::Set),
+                ),
         )
         .subcommand(
             Command::new("encrypt")
-                .about("Encrypts the specified file and place the output file specified dir")
+                .about("Encrypts the specified file and place the output file in specified dir")
                 .arg(
                     arg!(-'c' --"cdir" "Place output file in current dir")
                         .action(ArgAction::SetTrue),
                 )
                 .arg(arg!([FILEPATH] "file path of the target file").required(true))
-                .arg(arg!([OUTPUTDIR] "output directory, defaults to file dir").required(false)),
+                .arg(arg!([OUTPUTDIR] "output directory [defaults: file dir]")),
         )
         .get_matches();
 
@@ -42,13 +48,8 @@ fn main() {
         Some(("encrypt", sub_matches)) => {
             if let Some(filepath) = sub_matches.get_one::<PathBuf>("FILEPATH") {
                 let file_path: &Path = Path::new(filepath);
-
+                println!("{:?}", filepath);
                 if file_path.exists() {
-                    let password_check: String = Input::with_theme(&ColorfulTheme::default())
-                        .with_prompt("Enter your password")
-                        .interact_text()
-                        .unwrap();
-
                     if let true = sub_matches.get_flag("cdir") {
                         match current_dir() {
                             Ok(current_dir) => {
@@ -83,18 +84,32 @@ fn main() {
             }
         }
         Some(("password", sub_matches)) => {
-            if let true = sub_matches.get_flag("init") {
+            if let true = sub_matches.contains_id("init") {
                 match get_password() {
-                    Ok(_) => println!("Password is already set. Use -change flag to modify it."),
+                    Ok(_) => println!("Password is already set. Use --change flag to modify it."),
                     Err(_) => {
-                        let password: String = Password::with_theme(&ColorfulTheme::default())
-                            .with_prompt("Enter your password")
-                            .with_confirmation(
-                                "Confirm your password",
-                                "The passwords do not match.",
-                            )
-                            .interact()
-                            .unwrap();
+                        let password: String =
+                            if let Some(new_password) = sub_matches.get_one::<String>("init") {
+                                Password::with_theme(&ColorfulTheme::default())
+                                    .with_prompt("Confirm your password")
+                                    .validate_with(|input: &String| -> Result<(), &str> {
+                                        if input != new_password {
+                                            return Err("Passwords don't match.");
+                                        }
+                                        Ok(())
+                                    })
+                                    .interact()
+                                    .unwrap()
+                            } else {
+                                Password::with_theme(&ColorfulTheme::default())
+                                    .with_prompt("Enter your password")
+                                    .with_confirmation(
+                                        "Confirm your password",
+                                        "The passwords do not match.",
+                                    )
+                                    .interact()
+                                    .unwrap()
+                            };
 
                         match set_password(&password) {
                             Ok(_) => println!("{password} successfully set as your password."),
@@ -102,41 +117,33 @@ fn main() {
                         };
                     }
                 }
-            } else if let true = sub_matches.get_flag("change") {
+            } else if let true = sub_matches.contains_id("change") {
                 match get_password() {
                     Ok(password) => {
-                        if let Some(password_input) =
-                            sub_matches.get_one::<String>("change")
-                        {
+                        if let Some(password_input) = sub_matches.get_one::<String>("change") {
                             if *password_input != password {
                                 println!("Invalid password put as argument!");
                                 return;
+                            } else {
                             }
-                        }
-
-                        let mut tries: usize = 4;
-
-                        loop {
+                        } else {
                             let actual_password: String =
                                 Password::with_theme(&ColorfulTheme::default())
                                     .with_prompt("Enter your current password")
                                     .interact()
                                     .unwrap();
-
-                            if actual_password == password || tries == 0 {
-                                break;
+                            if actual_password != password {
+                                println!("Wrong password!");
+                                return;
                             }
-                            println!("Wrong password! {tries} attempts left.");
-
-                            tries -= 1;
-                        }
-                        if tries == 0 {
-                            println!("No attempt left! Wrong password!");
-                            return;
                         }
 
                         let new_password: String = Password::with_theme(&ColorfulTheme::default())
                             .with_prompt("Enter your new password")
+                            .with_confirmation(
+                                "Confirm your new password",
+                                "Passwords don't match.",
+                            )
                             .interact()
                             .unwrap();
 
@@ -149,7 +156,9 @@ fn main() {
                             Err(_) => eprintln!("An error occured! Try again."),
                         };
                     }
-                    Err(_) => eprintln!("Password has not been set yet. Use -init flag to set it."),
+                    Err(_) => {
+                        eprintln!("Password has not been set yet. Use --init flag to set it.")
+                    }
                 }
             }
         }
