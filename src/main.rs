@@ -3,6 +3,7 @@ mod password;
 
 use clap::{arg, command, Arg, ArgAction, ArgGroup, Command};
 use dialoguer::{theme::ColorfulTheme, Confirm, Input, Password};
+use encryption::init_encryption_key;
 use password::{get_password, set_password};
 use std::{
     env::current_dir,
@@ -39,16 +40,27 @@ fn main() {
                     arg!(-'c' --"cdir" "Place output file in current dir")
                         .action(ArgAction::SetTrue),
                 )
-                .arg(arg!([FILEPATH] "file path of the target file").required(true))
-                .arg(arg!([OUTPUTDIR] "output directory [defaults: file dir]")),
+                .arg(
+                    arg!([FILEPATH] "file path of the target file")
+                        .required(true)
+                        .value_parser(clap::value_parser!(PathBuf)),
+                )
+                .arg(
+                    arg!([OUTPUTDIR] "output directory [defaults: file dir]")
+                        .value_parser(clap::value_parser!(PathBuf)),
+                ),
         )
         .get_matches();
 
     match matches.subcommand() {
         Some(("encrypt", sub_matches)) => {
+            if let Err(_) = init_encryption_key() {
+                // initialize encryption key if 1st time using command
+                eprintln!("Error initializing encryption key!");
+                return;
+            }
             if let Some(filepath) = sub_matches.get_one::<PathBuf>("FILEPATH") {
                 let file_path: &Path = Path::new(filepath);
-                println!("{:?}", filepath);
                 if file_path.exists() {
                     if let true = sub_matches.get_flag("cdir") {
                         match current_dir() {
@@ -56,27 +68,27 @@ fn main() {
                                 println!("File encrypted into {:?} directory!", current_dir);
                             }
                             Err(error) => {
-                                eprintln!("Failed to get current directory: \"{}\".", error)
+                                eprintln!("Failed to get current directory: {}.", error)
                             }
                         }
                     } else if let Some(output_dir) = sub_matches.get_one::<PathBuf>("OUTPUTDIR") {
                         match Path::new(output_dir).is_dir() {
                             true => {
-                                println!("File encrypted into \"{:?}\" directory!", output_dir)
+                                println!("Encrypted file saved into {:?} directory!", output_dir);
                             }
-                            false => eprintln!("Failed to get \"{:?}\" directory.", output_dir),
+                            false => eprintln!("Failed to get {:?} directory.", output_dir),
                         }
                     } else {
                         match file_path.parent() {
                             Some(parent_dir) => {
-                                println!("File encrypted into {:?} directory!", parent_dir)
+                                println!("Encrypted file saved into {:?} directory!", parent_dir);
                             }
                             None => eprintln!("Failed to get target file parent directory."),
                         }
                     }
                 } else {
                     println!(
-                        "'{:?}' does not exist!\nCheck target file and try again.",
+                        "{:?} does not exist!\nCheck target file and try again.",
                         filepath
                     );
                     return;

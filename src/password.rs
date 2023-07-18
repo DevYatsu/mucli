@@ -1,6 +1,6 @@
 use std::fs::{File, OpenOptions};
 
-const PASSWORD_KEY: &str = "MUCLI_PASSWORD";
+const PASSWORD_KEYWORD: &str = "MUCLI_PASSWORD";
 const CONFIG_FILE: &str = "config.txt";
 
 use std::io::{prelude::*, Error, ErrorKind, SeekFrom, Write};
@@ -12,7 +12,7 @@ pub fn set_password(password: &str) -> Result<(), Error> {
         .create(true)
         .open(CONFIG_FILE)?;
 
-    let new_line = format!("{}={}", PASSWORD_KEY, password);
+    let new_line = format!("{}={}", PASSWORD_KEYWORD, password);
 
     let mut buffer = String::new();
     file.read_to_string(&mut buffer)?;
@@ -21,16 +21,16 @@ pub fn set_password(password: &str) -> Result<(), Error> {
 
     let filtered_lines: Vec<_> = buffer
         .lines()
-        .filter(|line| !line.starts_with(&format!("{}{}", PASSWORD_KEY, "=")))
+        .filter(|line| !line.starts_with(&format!("{}{}", PASSWORD_KEYWORD, "=")))
         .collect();
 
-    file.set_len(0)?; // Truncate the file
-
-    writeln!(file, "{}", new_line)?;
+    file.set_len(0)?;
 
     for line in filtered_lines {
         writeln!(file, "{}", line)?;
     }
+
+    writeln!(file, "{}", new_line)?;
 
     Ok(())
 }
@@ -42,8 +42,8 @@ pub fn get_password() -> Result<String, Error> {
     file.read_to_string(&mut buffer)?;
 
     for line in buffer.split("\n") {
-        if line.starts_with(&format!("{}{}", PASSWORD_KEY, "=")) {
-            return Ok(line[PASSWORD_KEY.len() + 1..].to_string());
+        if line.starts_with(&format!("{}{}", PASSWORD_KEYWORD, "=")) {
+            return Ok(line[PASSWORD_KEYWORD.len() + 1..].to_string());
         }
     }
     Err(Error::new(ErrorKind::Other, "No password found in file!"))

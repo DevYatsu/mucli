@@ -8,5 +8,6 @@ edition = "2021"
 [dependencies]
 clap = { version = "4.3.15", features = ["cargo"] }
 crypto = "0.5.1"
+custom_error = "1.9.2"
 dialoguer = "0.10.4"
 rand = "0.8.5"
