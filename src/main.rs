@@ -19,7 +19,6 @@ fn main() {
         .propagate_version(true)
         .subcommand_required(true)
         .arg_required_else_help(true)
-        .arg(Arg::new("hey").long("hey").action(ArgAction::SetTrue))
         .subcommand(
             Command::new("password")
                 .about("Set a security password to access sensible informations")
