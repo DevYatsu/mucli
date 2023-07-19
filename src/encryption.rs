@@ -3,6 +3,8 @@ use simplecrypt::{decrypt, encrypt};
 use std::fs::{File, OpenOptions};
 use std::io::{Error, Read, Seek, SeekFrom, Write};
 use std::path::{Path, PathBuf};
+use std::thread;
+use std::time::Duration;
 
 const ENCRYPTION_KEYWORD: &str = "MUCLI_ENCRYPT";
 const CONFIG_FILE: &str = "config.txt";
@@ -10,7 +12,7 @@ const CONFIG_FILE: &str = "config.txt";
 extern crate custom_error;
 use custom_error::custom_error;
 
-use crate::utils::arrow_pogress;
+use crate::utils::arrow_progress;
 
 custom_error! {pub EncryptionError
     Io{source: Error} = "{source}",
@@ -276,7 +278,7 @@ pub fn update_encryption_key() -> Result<(), EncryptionError> {
 pub fn update_file_encryption_key(filepath: &PathBuf) -> Result<(), EncryptionError> {
     let mut file = File::open(filepath)?;
     let initial_layer = get_file_data(&mut file)?.encryption_layer;
-    let pb = arrow_pogress((initial_layer * 2) as u64);
+    let pb = arrow_progress((initial_layer * 2) as u64);
     pb.set_prefix("Generating key...");
 
     // first we decrypt the file 
@@ -293,7 +295,9 @@ pub fn update_file_encryption_key(filepath: &PathBuf) -> Result<(), EncryptionEr
         pb.inc(1);
     }
 
-    pb.finish_with_message("Key updated.");
+    pb.finish_with_message("===> Key updated");
+    thread::sleep(Duration::from_millis(500));
+    pb.finish_and_clear();
     Ok(())
 }
 

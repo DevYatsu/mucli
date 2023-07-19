@@ -1,7 +1,7 @@
 use dialoguer::console::Term;
 use indicatif::{ProgressBar, ProgressStyle};
 
-pub fn arrow_pogress(steps: u64) -> ProgressBar {
+pub fn arrow_progress(steps: u64) -> ProgressBar {
     let pb = ProgressBar::new(steps);
     pb.set_style(ProgressStyle::with_template(
             // note that bar size is fixed unlike cargo which is dynamic
