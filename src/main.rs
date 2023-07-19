@@ -5,6 +5,7 @@ use clap::{arg, command, ArgAction, ArgGroup, Command};
 use dialoguer::{theme::ColorfulTheme, Password};
 use encryption::{
     decrypted_file_path, encrypted_file_path, init_encryption_key, update_encryption_key,
+    update_file_encryption_key,
 };
 use password::{get_password, set_password};
 use std::{
@@ -21,6 +22,10 @@ macro_rules! print_err {
 macro_rules! print_advice {
     ($fmt:literal) => (println!("\x1B[32msolution\x1B[0m: {}", $fmt));
     ($fmt:literal, $($arg:expr),*) => (println!("\x1B[32msolution\x1B[0m: {}", format_args!($fmt, $($arg),*)));
+}
+macro_rules! print_success {
+    ($fmt:literal) => (println!("\x1B[32msuccess\x1B[0m: {}", $fmt));
+    ($fmt:literal, $($arg:expr),*) => (println!("\x1B[32msuccess\x1B[0m: {}", format_args!($fmt, $($arg),*)));
 }
 
 fn main() {
@@ -54,7 +59,7 @@ fn main() {
                         .args(["ukey", "cdir"]),
                 )
                 .arg(
-                    arg!(-'u' --"ukey" "Update encryption key. Advised to use from time to time.")
+                    arg!(-'u' --"ukey" "Update encryption key or update encryption key of a file to the latest version.")
                         .action(ArgAction::SetTrue),
                 )
                 .arg(
@@ -105,7 +110,9 @@ fn main() {
                             Ok(current_dir) => {
                                 let output_path = encrypted_file_path(&file_path, &current_dir);
                                 match encrypt_file(&file_path.to_path_buf(), &output_path) {
-                                    Ok(_) => println!("Encrypted file saved as {:?}!", output_path),
+                                    Ok(_) => {
+                                        print_success!("Encrypted file saved as {:?}!", output_path)
+                                    }
                                     Err(_) => print_err!("Failed to encrypt file."),
                                 };
                             }
@@ -113,12 +120,22 @@ fn main() {
                                 print_err!("Failed to get current directory: {}.", error)
                             }
                         }
+                    } else if let true = sub_matches.get_flag("ukey") {
+                        match update_file_encryption_key(&file_path.to_path_buf()) {
+                            Ok(_) => print_success!(
+                                "{} updated without issue",
+                                file_path.file_name().unwrap().to_string_lossy().to_string()
+                            ),
+                            Err(e) => print_err!("Key updating failed: {}", e),
+                        }
                     } else if let Some(output_dir) = sub_matches.get_one::<PathBuf>("OUTPUTDIR") {
                         match Path::new(output_dir).is_dir() {
                             true => {
                                 let output_path = encrypted_file_path(&file_path, &output_dir);
                                 match encrypt_file(&file_path.to_path_buf(), &output_path) {
-                                    Ok(_) => println!("Encrypted file saved as {:?}!", output_path),
+                                    Ok(_) => {
+                                        print_success!("Encrypted file saved as {:?}!", output_path)
+                                    }
                                     Err(_) => print_err!("Failed to encrypt file."),
                                 };
                             }
@@ -129,7 +146,9 @@ fn main() {
                             Some(parent_dir) => {
                                 let output_path = encrypted_file_path(&file_path, &parent_dir);
                                 match encrypt_file(&file_path.to_path_buf(), &output_path) {
-                                    Ok(_) => println!("Encrypted file saved as {:?}!", output_path),
+                                    Ok(_) => {
+                                        print_success!("Encrypted file saved as {:?}!", output_path)
+                                    }
                                     Err(_) => print_err!("Failed to encrypt file."),
                                 };
                             }
@@ -137,10 +156,8 @@ fn main() {
                         }
                     }
                 } else {
-                    print_err!(
-                        "{:?} does not exist!\nCheck target file and try again.",
-                        filepath
-                    );
+                    print_err!("{:?} does not exist!", filepath);
+                    print_advice!("Check target file and try again");
                     return;
                 }
             } else if let true = sub_matches.get_flag("ukey") {
@@ -165,7 +182,9 @@ fn main() {
                             Ok(current_dir) => {
                                 let output_path = decrypted_file_path(&file_path, &current_dir);
                                 match decrypt_file(&file_path.to_path_buf(), &output_path) {
-                                    Ok(_) => println!("Decrypted file saved as {:?}!", output_path),
+                                    Ok(_) => {
+                                        print_success!("Decrypted file saved as {:?}!", output_path)
+                                    }
                                     Err(e) => print_err!("{}", e),
                                 };
                             }
@@ -178,7 +197,9 @@ fn main() {
                             true => {
                                 let output_path = decrypted_file_path(&file_path, &output_dir);
                                 match decrypt_file(&file_path.to_path_buf(), &output_path) {
-                                    Ok(_) => println!("Decrypted file saved as {:?}!", output_path),
+                                    Ok(_) => {
+                                        print_success!("Decrypted file saved as {:?}!", output_path)
+                                    }
                                     Err(e) => print_err!("{}", e),
                                 };
                             }
@@ -189,7 +210,9 @@ fn main() {
                             Some(parent_dir) => {
                                 let output_path = decrypted_file_path(&file_path, &parent_dir);
                                 match decrypt_file(&file_path.to_path_buf(), &output_path) {
-                                    Ok(_) => println!("Decrypted file saved as {:?}!", output_path),
+                                    Ok(_) => {
+                                        print_success!("Decrypted file saved as {:?}!", output_path)
+                                    }
                                     Err(e) => print_err!("{}", e),
                                 };
                             }
@@ -197,10 +220,7 @@ fn main() {
                         }
                     }
                 } else {
-                    print_err!(
-                        "{:?} does not exist!",
-                        filepath
-                    );
+                    print_err!("{:?} does not exist!", filepath);
                     print_advice!("Check target file and try again.");
                     return;
                 }
@@ -209,7 +229,9 @@ fn main() {
         Some(("password", sub_matches)) => {
             if let true = sub_matches.contains_id("init") {
                 match get_password() {
-                    Ok(_) => println!("Password is already set. Use --change flag to modify it."),
+                    Ok(_) => {
+                        print_success!("Password is already set. Use --change flag to modify it.")
+                    }
                     Err(_) => {
                         let password: String =
                             if let Some(new_password) = sub_matches.get_one::<String>("init") {
@@ -235,7 +257,9 @@ fn main() {
                             };
 
                         match set_password(&password) {
-                            Ok(_) => println!("{password} successfully set as your password."),
+                            Ok(_) => {
+                                print_success!("{password} successfully set as your password.")
+                            }
                             Err(e) => print_err!("Failed to set password! Please try again.{}", e),
                         };
                     }
@@ -245,7 +269,7 @@ fn main() {
                     Ok(password) => {
                         if let Some(password_input) = sub_matches.get_one::<String>("change") {
                             if *password_input != password {
-                                println!("Invalid password put as argument!");
+                                print_success!("Invalid password put as argument!");
                                 return;
                             } else {
                             }
@@ -256,7 +280,7 @@ fn main() {
                                     .interact()
                                     .unwrap();
                             if actual_password != password {
-                                println!("Wrong password!");
+                                print_success!("Wrong password!");
                                 return;
                             }
                         }
@@ -272,7 +296,7 @@ fn main() {
 
                         match set_password(&new_password) {
                             Ok(_) => {
-                                println!(
+                                print_success!(
                                     "\"{new_password}\" was successfully set as your new password."
                                 )
                             }
