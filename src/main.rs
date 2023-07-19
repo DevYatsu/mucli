@@ -84,12 +84,12 @@ fn main() {
 
     match matches.subcommand() {
         Some(("encrypt", sub_matches)) => {
-            if let Err(_) = init_encryption_key() {
-                // initialize encryption key if 1st time using command
-                eprintln!("Error initializing encryption key!");
-                return;
-            }
             if let Some(filepath) = sub_matches.get_one::<PathBuf>("FILEPATH") {
+                if let Err(_) = init_encryption_key() {
+                    // initialize encryption key if 1st time using command
+                    eprintln!("Error initializing encryption key!");
+                    return;
+                }
                 let file_path: &Path = Path::new(filepath);
                 if file_path.exists() {
                     if let true = sub_matches.get_flag("cdir") {

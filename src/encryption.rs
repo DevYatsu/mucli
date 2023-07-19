@@ -196,10 +196,10 @@ pub fn init_encryption_key() -> Result<(), EncryptionError> {
 pub fn update_encryption_key() -> Result<(), EncryptionError> {
     match encryption_key_exists() {
         Ok(val) => {
-            println!("{val}");
-
             if let true = val {
                 set_encryption_key()?
+            } else {
+                println!("Impossible to update encryption key.")
             }
             Ok(())
         }
