@@ -9,5 +9,6 @@ edition = "2021"
 clap = { version = "4.3.15", features = ["cargo"] }
 custom_error = "1.9.2"
 dialoguer = "0.10.4"
+indicatif = "0.17.5"
 rand = "0.8.5"
 simplecrypt = "1.0.2"

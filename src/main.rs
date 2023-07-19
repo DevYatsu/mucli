@@ -1,5 +1,6 @@
 mod encryption;
 mod password;
+mod utils;
 
 use clap::{arg, command, ArgAction, ArgGroup, Command};
 use dialoguer::{theme::ColorfulTheme, Password};
@@ -16,16 +17,16 @@ use std::{
 use crate::encryption::{decrypt_file, encrypt_file};
 
 macro_rules! print_err {
-    ($fmt:literal) => (println!("\x1B[31merror\x1B[0m: {}", $fmt));
-    ($fmt:literal, $($arg:expr),*) => (println!("\x1B[31merror\x1B[0m: {}", format_args!($fmt, $($arg),*)));
+    ($fmt:literal) => (println!("\x1B[38;5;196merror\x1B[0m: {}", $fmt));
+    ($fmt:literal, $($arg:expr),*) => (println!("\x1B[38;5;196merror\x1B[0m: {}", format_args!($fmt, $($arg),*)));
 }
 macro_rules! print_advice {
-    ($fmt:literal) => (println!("\x1B[32msolution\x1B[0m: {}", $fmt));
-    ($fmt:literal, $($arg:expr),*) => (println!("\x1B[32msolution\x1B[0m: {}", format_args!($fmt, $($arg),*)));
+    ($fmt:literal) => (println!("\x1B[38;5;227msolution\x1B[0m: {}", $fmt));
+    ($fmt:literal, $($arg:expr),*) => (println!("\x1B[38;5;227msolution\x1B[0m: {}", format_args!($fmt, $($arg),*)));
 }
 macro_rules! print_success {
-    ($fmt:literal) => (println!("\x1B[32msuccess\x1B[0m: {}", $fmt));
-    ($fmt:literal, $($arg:expr),*) => (println!("\x1B[32msuccess\x1B[0m: {}", format_args!($fmt, $($arg),*)));
+    ($fmt:literal) => (println!("\x1B[38;5;46msuccess\x1B[0m: {}", $fmt));
+    ($fmt:literal, $($arg:expr),*) => (println!("\x1B[38;5;46msuccess\x1B[0m: {}", format_args!($fmt, $($arg),*)));
 }
 
 fn main() {
@@ -39,7 +40,7 @@ fn main() {
                 .group(
                     ArgGroup::new("password_action")
                         .required(true)
-                        .args(["init", "change"]),
+                        .args(["init", "change", "reset"]),
                 )
                 .arg(
                     arg!(-'i' --"init" [NEW_PASSWORD] "Set password for first time")
@@ -47,6 +48,9 @@ fn main() {
                 )
                 .arg(
                     arg!(-'c' --"change"  [INITIAL_PASSWORD] "Change password when set")
+                        .action(ArgAction::Set),
+                )                .arg(
+                    arg!(-'r' --"reset" "Reset password (not working for the moment)")
                         .action(ArgAction::Set),
                 ),
         )
@@ -230,7 +234,8 @@ fn main() {
             if let true = sub_matches.contains_id("init") {
                 match get_password() {
                     Ok(_) => {
-                        print_success!("Password is already set. Use --change flag to modify it.")
+                        print_err!("Password is already set");
+                        print_advice!("Use --change flag to modify it.");
                     }
                     Err(_) => {
                         let password: String =
@@ -258,9 +263,9 @@ fn main() {
 
                         match set_password(&password) {
                             Ok(_) => {
-                                print_success!("{password} successfully set as your password.")
+                                print_success!("{} successfully set as your password.", password)
                             }
-                            Err(e) => print_err!("Failed to set password! Please try again.{}", e),
+                            Err(e) => print_err!("Failed to set password! -> {}", e),
                         };
                     }
                 }
@@ -269,7 +274,7 @@ fn main() {
                     Ok(password) => {
                         if let Some(password_input) = sub_matches.get_one::<String>("change") {
                             if *password_input != password {
-                                print_success!("Invalid password put as argument!");
+                                print_err!("Invalid password put as argument!");
                                 return;
                             } else {
                             }
@@ -280,7 +285,7 @@ fn main() {
                                     .interact()
                                     .unwrap();
                             if actual_password != password {
-                                print_success!("Wrong password!");
+                                print_err!("Wrong password!");
                                 return;
                             }
                         }
@@ -297,14 +302,14 @@ fn main() {
                         match set_password(&new_password) {
                             Ok(_) => {
                                 print_success!(
-                                    "\"{new_password}\" was successfully set as your new password."
+                                    "\"{}\" was successfully set as your new password.", new_password
                                 )
                             }
-                            Err(_) => print_err!("An error occured! Try again."),
+                            Err(e) => print_err!("{}", e),
                         };
                     }
                     Err(_) => {
-                        print_err!("Password has not been set yet. Use --init flag to set it.")
+                        print_advice!("Password has not been set yet. Use --init flag to set it.")
                     }
                 }
             }

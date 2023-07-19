@@ -10,6 +10,8 @@ const CONFIG_FILE: &str = "config.txt";
 extern crate custom_error;
 use custom_error::custom_error;
 
+use crate::utils::arrow_pogress;
+
 custom_error! {pub EncryptionError
     Io{source: Error} = "{source}",
     NoKeyFound = "No key found in config.txt",
@@ -76,8 +78,6 @@ pub fn encrypt_file(input_path: &PathBuf, output_path: &PathBuf) -> Result<(), E
     let mut input_data: Vec<u8> = Vec::new();
     input_file.read_to_end(&mut input_data)?;
 
-    drop(input_file);
-
     let data = if file_header.encryption_layer > 0 {
         file_content(input_data)?
     } else {
@@ -96,7 +96,6 @@ pub fn encrypt_file(input_path: &PathBuf, output_path: &PathBuf) -> Result<(), E
 
 pub fn decrypt_file(input_path: &PathBuf, output_path: &PathBuf) -> Result<(), EncryptionError> {
     let mut input_file = File::open(&input_path)?;
-    println!("wokring");
 
     let mut file_header = get_file_data(&mut input_file)?;
 
@@ -112,7 +111,6 @@ pub fn decrypt_file(input_path: &PathBuf, output_path: &PathBuf) -> Result<(), E
     // Read the contents of the input file into a buffer
     let mut encrypted_data: Vec<u8> = Vec::new();
     input_file.read_to_end(&mut encrypted_data)?;
-    drop(input_file);
 
     let crypted_content: Vec<u8> = file_content(encrypted_data)?;
 
@@ -278,17 +276,24 @@ pub fn update_encryption_key() -> Result<(), EncryptionError> {
 pub fn update_file_encryption_key(filepath: &PathBuf) -> Result<(), EncryptionError> {
     let mut file = File::open(filepath)?;
     let initial_layer = get_file_data(&mut file)?.encryption_layer;
+    let pb = arrow_pogress((initial_layer * 2) as u64);
+    pb.set_prefix("Generating key...");
 
-    // first we make the decrypt the file 
+    // first we decrypt the file 
     while let Ok(_) = get_file_data(&mut file) {
-        decrypt_file(filepath, filepath)?
+        decrypt_file(filepath, filepath)?;
+        pb.inc(1);
     }
 
+    // we encrypt it again with newly generated key 
     let mut layer = 0;
     while layer < initial_layer {
         encrypt_file(filepath, filepath)?;
         layer += 1;
+        pb.inc(1);
     }
+
+    pb.finish_with_message("Key updated.");
     Ok(())
 }
 
