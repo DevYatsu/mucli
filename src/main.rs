@@ -3,14 +3,14 @@ mod password;
 
 use clap::{arg, command, Arg, ArgAction, ArgGroup, Command};
 use dialoguer::{theme::ColorfulTheme, Password};
-use encryption::{init_encryption_key, encrypted_file_path, decrypted_file_path};
+use encryption::{decrypted_file_path, encrypted_file_path, init_encryption_key};
 use password::{get_password, set_password};
 use std::{
     env::current_dir,
     path::{Path, PathBuf},
 };
 
-use crate::encryption::{encrypt_file, decrypt_file};
+use crate::encryption::{decrypt_file, encrypt_file};
 
 fn main() {
     let matches = command!()
@@ -38,6 +38,12 @@ fn main() {
         .subcommand(
             Command::new("encrypt")
                 .about("Encrypts the specified file and place the output file in specified dir")
+                .group(
+                    ArgGroup::new("encrypt_actions")
+                        .required(false)
+                        .args(["ukey", "cdir"]),
+                )
+                .arg(arg!(-'u' --"ukey" "Update encryption key. Advised to use from time to time."))
                 .arg(
                     arg!(-'c' --"cdir" "Place output file in current dir")
                         .action(ArgAction::SetTrue),
@@ -88,7 +94,7 @@ fn main() {
                                 match encrypt_file(&file_path.to_path_buf(), &output_path) {
                                     Ok(_) => println!("Decrypted file saved as {:?}!", output_path),
                                     Err(_) => eprintln!("Failed to decrypt file."),
-                                };                            
+                                };
                             }
                             Err(error) => {
                                 eprintln!("Failed to get current directory: {}.", error)
@@ -101,7 +107,8 @@ fn main() {
                                 match encrypt_file(&file_path.to_path_buf(), &output_path) {
                                     Ok(_) => println!("Decrypted file saved as {:?}!", output_path),
                                     Err(_) => eprintln!("Failed to decrypt file."),
-                                };                            }
+                                };
+                            }
                             false => eprintln!("Failed to get {:?} directory.", output_dir),
                         }
                     } else {
@@ -141,7 +148,7 @@ fn main() {
                                 match decrypt_file(&file_path.to_path_buf(), &output_path) {
                                     Ok(_) => println!("Decrypted file saved as {:?}!", output_path),
                                     Err(_) => eprintln!("Failed to decrypt file."),
-                                };                            
+                                };
                             }
                             Err(error) => {
                                 eprintln!("Failed to get current directory: {}.", error)
@@ -154,7 +161,8 @@ fn main() {
                                 match decrypt_file(&file_path.to_path_buf(), &output_path) {
                                     Ok(_) => println!("Decrypted file saved as {:?}!", output_path),
                                     Err(_) => eprintln!("Failed to decrypt file."),
-                                };                            }
+                                };
+                            }
                             false => eprintln!("Failed to get {:?} directory.", output_dir),
                         }
                     } else {
