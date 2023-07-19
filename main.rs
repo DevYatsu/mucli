@@ -45,17 +45,14 @@ fn main() {
                         .required(false)
                         .args(["ukey", "cdir"]),
                 )
-                .arg(
-                    arg!(-'u' --"ukey" "Update encryption key. Advised to use from time to time.")
-                        .action(ArgAction::SetTrue),
-                )
+                .arg(arg!(-'u' --"ukey" "Update encryption key. Advised to use from time to time."))
                 .arg(
                     arg!(-'c' --"cdir" "Place output file in current dir")
                         .action(ArgAction::SetTrue),
                 )
                 .arg(
                     arg!([FILEPATH] "file path of the target file")
-                        .required_unless_present("ukey")
+                        .required(true)
                         .value_parser(clap::value_parser!(PathBuf)),
                 )
                 .arg(
@@ -105,6 +102,12 @@ fn main() {
                                 eprintln!("Failed to get current directory: {}.", error)
                             }
                         }
+                    } else if let true = sub_matches.get_flag("ukey") {
+                        if let Err(_) = update_encryption_key() {
+                            // initialize encryption key if 1st time using command
+                            eprintln!("Error updating encryption key!");
+                            return;
+                        }
                     } else if let Some(output_dir) = sub_matches.get_one::<PathBuf>("OUTPUTDIR") {
                         match Path::new(output_dir).is_dir() {
                             true => {
@@ -133,12 +136,6 @@ fn main() {
                         "{:?} does not exist!\nCheck target file and try again.",
                         filepath
                     );
-                    return;
-                }
-            } else if let true = sub_matches.get_flag("ukey") {
-                if let Err(_) = update_encryption_key() {
-                    // initialize encryption key if 1st time using command
-                    eprintln!("Error updating encryption key!");
                     return;
                 }
             }

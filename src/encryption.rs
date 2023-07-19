@@ -19,7 +19,8 @@ custom_error! {pub EncryptionError
     VersionFormat = "Invalid version format found in config.txt",
     DecryptionFailed{filename: String} = "Decryption of the \"{filename}\" failed",
     EncryptionFailed{filename: String} = "Encryption of the \"{filename}\" failed",
-    ConfigNotFound = "config file not found or unreadable"
+    ConfigNotFound = "Config file not found or unreadable",
+    UpdateBeforeInit = "Cannot update the key. Please init first."
 }
 
 pub fn encrypt_file(input_path: &PathBuf, output_path: &PathBuf) -> Result<(), EncryptionError> {
@@ -114,38 +115,51 @@ fn encryption_keys() -> Result<Vec<Vec<u8>>, EncryptionError> {
         .create(true)
         .read(true)
         .open(CONFIG_FILE)?;
+
     let mut buffer = String::new();
     file.read_to_string(&mut buffer)?;
 
-    let mut filtered_lines: Vec<(u32, Vec<u8>)> = buffer
-        .lines()
-        .filter(|line| line.starts_with(&format!("{}=", ENCRYPTION_KEYWORD)))
-        .map(|line| {
-            let mut iterator = line.split('=');
-            return (
-                iterator.nth(1).unwrap().trim().parse::<u32>().unwrap(),
-                iterator
-                    .nth(2)
-                    .unwrap()
-                    .trim()
-                    .trim_matches(|c| c == '[' || c == ']')
-                    .split(',')
-                    .map(|val| val.parse::<u8>().unwrap())
-                    .collect::<Vec<u8>>(),
-            );
-        })
-        .collect();
+    let mut filtered_lines = extract_filtered_lines(&buffer)?;
 
     if filtered_lines.is_empty() {
         return Err(EncryptionError::NoKeyFound);
     }
 
-    filtered_lines.sort_by(|a, b| a.0.cmp(&b.0));
+    filtered_lines.sort_by_key(|(key, _)| *key);
 
-    Ok(filtered_lines
-        .into_iter()
-        .map(|(_, vec)| vec)
-        .collect::<Vec<Vec<u8>>>())
+    let encryption_keys = filtered_lines.into_iter().map(|(_, vec)| vec).collect();
+
+    Ok(encryption_keys)
+}
+
+fn extract_filtered_lines(buffer: &str) -> Result<Vec<(u32, Vec<u8>)>, EncryptionError> {
+    let filtered_lines: Vec<(u32, Vec<u8>)> = buffer
+        .lines()
+        .filter(|line| line.starts_with(&format!("{}=", ENCRYPTION_KEYWORD)))
+        .map(|line| parse_encryption_key_line(line))
+        .collect();
+
+    Ok(filtered_lines)
+}
+
+fn parse_encryption_key_line(line: &str) -> (u32, Vec<u8>) {
+    let mut iterator = line.split('=');
+    iterator.next();
+    let key_value = iterator.next().unwrap().trim();
+    let key = key_value.parse().unwrap();
+
+    let raw_values = iterator
+        .next()
+        .unwrap()
+        .trim()
+        .trim_matches(|c| c == '[' || c == ']');
+
+    let values: Vec<u8> = raw_values
+        .split(',')
+        .map(|val| val.trim().parse::<u8>().unwrap())
+        .collect();
+
+    (key, values)
 }
 
 fn encryption_key_exists() -> Result<bool, EncryptionError> {
@@ -179,14 +193,18 @@ pub fn init_encryption_key() -> Result<(), EncryptionError> {
         Err(_) => Err(EncryptionError::ConfigNotFound),
     }
 }
-
 pub fn update_encryption_key() -> Result<(), EncryptionError> {
-    if let Ok(true) = encryption_key_exists() {
-        // find a simple way to recognize the version the file was encrypted with
-        set_encryption_key()?;
-        todo!();
+    match encryption_key_exists() {
+        Ok(val) => {
+            println!("{val}");
+
+            if let true = val {
+                set_encryption_key()?
+            }
+            Ok(())
+        }
+        Err(_) => Err(EncryptionError::ConfigNotFound),
     }
-    Ok(())
 }
 
 fn latest_encription_key() -> Result<Vec<u8>, EncryptionError> {
