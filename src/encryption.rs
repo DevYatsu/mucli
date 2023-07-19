@@ -1,13 +1,11 @@
 use rand::RngCore;
 use simplecrypt::{decrypt, encrypt};
-use std::fs::{self, File, OpenOptions};
+use std::fs::{File, OpenOptions};
 use std::io::{Error, Read, Seek, SeekFrom, Write};
-use std::os::unix::prelude::PermissionsExt;
 use std::path::{Path, PathBuf};
 
 const ENCRYPTION_KEYWORD: &str = "MUCLI_ENCRYPT";
 const CONFIG_FILE: &str = "config.txt";
-const VERSION_MASK: u32 = 0b1111_0000; // Mask to isolate the version bits
 
 extern crate custom_error;
 use custom_error::custom_error;
@@ -15,46 +13,72 @@ use custom_error::custom_error;
 custom_error! {pub EncryptionError
     Io{source: Error} = "Unable to open file",
     NoKeyFound = "No key found in config.txt",
+    RetrievingKey = "Error retrieving encryption key.",
     NoVersionFound = "No version found in config.txt",
+    NoVersionSet = "No version set for this file",
     VersionFormat = "Invalid version format found in config.txt",
-    DecryptionFailed{filename: String} = "Decryption of the \"{filename}\" failed",
-    EncryptionFailed{filename: String} = "Encryption of the \"{filename}\" failed",
+    DecryptionFailed{filename: String} = "Decryption of \"{filename}\" failed",
+    EncryptionFailed{filename: String} = "Encryption of \"{filename}\" failed",
     ConfigNotFound = "Config file not found or unreadable",
-    UpdateBeforeInit = "Cannot update the key. Please init first."
+    UpdateBeforeInit = "Cannot update the key. Please init first.",
+    CannotAccessFile{filename: String} = "Cannot access file \"{filename}\"",
+    InvalidFileContent = "Decrypted file as an invalid content."
 }
 
 pub fn encrypt_file(input_path: &PathBuf, output_path: &PathBuf) -> Result<(), EncryptionError> {
-    let key = latest_encription_key()?;
-    let version = latest_encryption_version()?;
+    // add a layer of verification if the file is already an encrypted one
+    // then ask to decrypt the file and encrypt it again with new version
 
     let mut input_file: File = File::open(input_path)?;
     let mut output_file: File = File::create(output_path)?;
+
+    let version = match get_file_version(&mut input_file) {
+        Ok(v) => {
+            let latest_v = latest_encryption_version()?;
+            if latest_v > v {
+                v
+            } else {
+                latest_v
+            }
+        }
+        Err(EncryptionError::NoVersionSet) => latest_encryption_version()?,
+        Err(e) => return Err(e),
+    };
+    let key = match nth_encription_key(version as usize) {
+        Ok(k) => k,
+        Err(_) => return Err(EncryptionError::RetrievingKey),
+    };
 
     // Read the contents of the input file into a buffer
     let mut input_data: Vec<u8> = Vec::new();
     input_file.read_to_end(&mut input_data)?;
 
-    let encrypted: Vec<u8> = encrypt(&input_data, &key);
+    let mut encrypted: Vec<u8> = encrypt(&input_data, &key);
 
+    set_file_version(&mut encrypted, version)?;
     output_file.write_all(&encrypted)?;
-
-    set_file_version(&output_path, version)?;
 
     Ok(())
 }
 
 pub fn decrypt_file(input_path: &PathBuf, output_path: &PathBuf) -> Result<(), EncryptionError> {
-    let file_version = get_file_version(&input_path)?;
-    let key = nth_encription_key(file_version as usize)?;
-
     let mut input_file = File::open(&input_path)?;
     let mut output_file = File::create(&output_path)?;
 
+    let file_version = get_file_version(&mut input_file)?;
+
+    let key = match nth_encription_key(file_version as usize) {
+        Ok(k) => k,
+        Err(_) => return Err(EncryptionError::RetrievingKey),
+    };
+    
     // Read the contents of the input file into a buffer
     let mut encrypted_data: Vec<u8> = Vec::new();
     input_file.read_to_end(&mut encrypted_data)?;
-
-    let decrypted: Vec<u8> = match decrypt(&encrypted_data, &key) {
+    
+    let crypted_content = file_content(encrypted_data)?;
+    
+    let decrypted_content: Vec<u8> = match decrypt(&crypted_content, &key) {
         Ok(result) => result,
         Err(_) => {
             return Err(EncryptionError::DecryptionFailed {
@@ -63,7 +87,8 @@ pub fn decrypt_file(input_path: &PathBuf, output_path: &PathBuf) -> Result<(), E
         }
     };
 
-    output_file.write_all(&decrypted)?;
+    // set_file_version(&mut output_file, file_version)?;
+    output_file.write_all(&decrypted_content)?;
 
     Ok(())
 }
@@ -207,12 +232,6 @@ pub fn update_encryption_key() -> Result<(), EncryptionError> {
     }
 }
 
-fn latest_encription_key() -> Result<Vec<u8>, EncryptionError> {
-    let keys = encryption_keys()?;
-    let key = keys[keys.len() - 1].clone();
-
-    Ok(key)
-}
 fn nth_encription_key(index: usize) -> Result<Vec<u8>, EncryptionError> {
     let keys = encryption_keys()?;
     let key = keys[index].clone();
@@ -252,30 +271,54 @@ fn latest_encryption_version() -> Result<u32, EncryptionError> {
     Ok(filtered_lines[0])
 }
 
-fn set_file_version(file_path: &PathBuf, version: u32) -> Result<(), EncryptionError> {
-    let metadata = fs::metadata(file_path)?;
-    let mut permissions = metadata.permissions();
+const HEADER_SIZE: usize = 4;
+const VERSION_SIZE: usize = 4;
+fn set_file_version(data: &mut Vec<u8>, version: u32) -> Result<(), EncryptionError> {
+    // Convert the version to bytes to write to the file
+    let version_bytes: [u8; VERSION_SIZE] = version.to_be_bytes();
+    let header_marker: [u8; HEADER_SIZE] = [0xAA, 0xBB, 0xCC, 0xDD];
 
-    let mode = permissions.mode() & !VERSION_MASK; // Clear existing version bits
-
-    let version_bits: u32 = (version) << 4; // Shift the version to the appropriate position
-    let new_mode = mode | version_bits; // Combine with existing mode bits
-
-    permissions.set_mode(new_mode);
-    fs::set_permissions(file_path, permissions)?;
+    // Insert the header marker and version at the start of the vector
+    data.splice(0..0, version_bytes.iter().cloned());
+    data.splice(0..0, header_marker.iter().cloned());
 
     Ok(())
 }
 
-fn get_file_version(file_path: &PathBuf) -> Result<u32, EncryptionError> {
-    let metadata = fs::metadata(file_path)?;
-    let permissions = metadata.permissions();
-    let mode = permissions.mode();
+fn get_file_version(file: &mut File) -> Result<u32, EncryptionError> {
+    let mut header_marker = [0u8; HEADER_SIZE];
+    let mut version_bytes = [0u8; VERSION_SIZE];
 
-    let version_bits = (mode & VERSION_MASK) >> 4; // Extract the version bits
-    let version = version_bits as u32;
+    // Save the current cursor position
+    let current_pos = file.seek(SeekFrom::Current(0))?;
+
+    // Move the cursor to the start of the file
+    file.seek(SeekFrom::Start(0))?;
+
+    // Read the header marker and version bytes from the file
+    file.read_exact(&mut header_marker)?;
+    if header_marker != [0xAA, 0xBB, 0xCC, 0xDD] {
+        file.seek(SeekFrom::Start(current_pos))?;
+        return Err(EncryptionError::NoVersionSet);
+    }
+
+    file.read_exact(&mut version_bytes)?;
+    let version = u32::from_be_bytes(version_bytes);
+
+    // Restore the original cursor position
+    file.seek(SeekFrom::Start(current_pos))?;
 
     Ok(version)
+}
+
+fn file_content(mut decrypted: Vec<u8>) -> Result<Vec<u8>, EncryptionError> {
+    if decrypted.len() < HEADER_SIZE + VERSION_SIZE {
+        return Err(EncryptionError::InvalidFileContent);
+    }
+
+    // Split off the header and version bytes from the decrypted content
+    let file_content = decrypted.split_off(HEADER_SIZE + VERSION_SIZE);
+    Ok(file_content)
 }
 
 pub fn encrypted_file_path(file_path: &Path, current_dir: &Path) -> PathBuf {
@@ -283,7 +326,6 @@ pub fn encrypted_file_path(file_path: &Path, current_dir: &Path) -> PathBuf {
     file_name = format!("enc.{}", file_name);
 
     let output_path = current_dir.join(file_name);
-    println!("{:?}", output_path);
     output_path
 }
 pub fn decrypted_file_path(file_path: &Path, current_dir: &Path) -> PathBuf {
@@ -292,7 +334,6 @@ pub fn decrypted_file_path(file_path: &Path, current_dir: &Path) -> PathBuf {
         file_name = file_name[4..].to_string();
     }
     let output_path = current_dir.join(file_name);
-    println!("{:?}", output_path);
 
     output_path
 }

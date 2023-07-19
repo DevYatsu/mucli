@@ -1,7 +1,7 @@
 mod encryption;
 mod password;
 
-use clap::{arg, command, Arg, ArgAction, ArgGroup, Command};
+use clap::{arg, command, ArgAction, ArgGroup, Command};
 use dialoguer::{theme::ColorfulTheme, Password};
 use encryption::{
     decrypted_file_path, encrypted_file_path, init_encryption_key, update_encryption_key,
@@ -13,6 +13,15 @@ use std::{
 };
 
 use crate::encryption::{decrypt_file, encrypt_file};
+
+macro_rules! print_err {
+    ($fmt:literal) => (println!("\x1B[31merror\x1B[0m: {}", $fmt));
+    ($fmt:literal, $($arg:expr),*) => (println!("\x1B[31merror\x1B[0m: {}", format_args!($fmt, $($arg),*)));
+}
+macro_rules! print_advice {
+    ($fmt:literal) => (println!("\x1B[32msolution\x1B[0m: {}", $fmt));
+    ($fmt:literal, $($arg:expr),*) => (println!("\x1B[32msolution\x1B[0m: {}", format_args!($fmt, $($arg),*)));
+}
 
 fn main() {
     let matches = command!()
@@ -86,7 +95,7 @@ fn main() {
             if let Some(filepath) = sub_matches.get_one::<PathBuf>("FILEPATH") {
                 if let Err(_) = init_encryption_key() {
                     // initialize encryption key if 1st time using command
-                    eprintln!("Error initializing encryption key!");
+                    print_err!("Initializing encryption key failed!");
                     return;
                 }
                 let file_path: &Path = Path::new(filepath);
@@ -96,12 +105,12 @@ fn main() {
                             Ok(current_dir) => {
                                 let output_path = encrypted_file_path(&file_path, &current_dir);
                                 match encrypt_file(&file_path.to_path_buf(), &output_path) {
-                                    Ok(_) => println!("Decrypted file saved as {:?}!", output_path),
-                                    Err(_) => eprintln!("Failed to decrypt file."),
+                                    Ok(_) => println!("Encrypted file saved as {:?}!", output_path),
+                                    Err(_) => print_err!("Failed to encrypt file."),
                                 };
                             }
                             Err(error) => {
-                                eprintln!("Failed to get current directory: {}.", error)
+                                print_err!("Failed to get current directory: {}.", error)
                             }
                         }
                     } else if let Some(output_dir) = sub_matches.get_one::<PathBuf>("OUTPUTDIR") {
@@ -109,26 +118,26 @@ fn main() {
                             true => {
                                 let output_path = encrypted_file_path(&file_path, &output_dir);
                                 match encrypt_file(&file_path.to_path_buf(), &output_path) {
-                                    Ok(_) => println!("Decrypted file saved as {:?}!", output_path),
-                                    Err(_) => eprintln!("Failed to decrypt file."),
+                                    Ok(_) => println!("Encrypted file saved as {:?}!", output_path),
+                                    Err(_) => print_err!("Failed to encrypt file."),
                                 };
                             }
-                            false => eprintln!("Failed to get {:?} directory.", output_dir),
+                            false => print_err!("Failed to get {:?} directory.", output_dir),
                         }
                     } else {
                         match file_path.parent() {
                             Some(parent_dir) => {
                                 let output_path = encrypted_file_path(&file_path, &parent_dir);
                                 match encrypt_file(&file_path.to_path_buf(), &output_path) {
-                                    Ok(_) => println!("Decrypted file saved as {:?}!", output_path),
-                                    Err(_) => eprintln!("Failed to decrypt file."),
+                                    Ok(_) => println!("Encrypted file saved as {:?}!", output_path),
+                                    Err(_) => print_err!("Failed to encrypt file."),
                                 };
                             }
-                            None => eprintln!("Failed to get target file parent directory."),
+                            None => print_err!("Failed to get target file parent directory."),
                         }
                     }
                 } else {
-                    println!(
+                    print_err!(
                         "{:?} does not exist!\nCheck target file and try again.",
                         filepath
                     );
@@ -137,7 +146,7 @@ fn main() {
             } else if let true = sub_matches.get_flag("ukey") {
                 if let Err(_) = update_encryption_key() {
                     // initialize encryption key if 1st time using command
-                    eprintln!("Error updating encryption key!");
+                    print_err!("Error updating encryption key!");
                     return;
                 }
             }
@@ -145,7 +154,7 @@ fn main() {
         Some(("decrypt", sub_matches)) => {
             if let Err(_) = init_encryption_key() {
                 // initialize encryption key if 1st time using command
-                eprintln!("Error initializing encryption key!");
+                print_err!("Error initializing encryption key!");
                 return;
             }
             if let Some(filepath) = sub_matches.get_one::<PathBuf>("FILEPATH") {
@@ -157,11 +166,11 @@ fn main() {
                                 let output_path = decrypted_file_path(&file_path, &current_dir);
                                 match decrypt_file(&file_path.to_path_buf(), &output_path) {
                                     Ok(_) => println!("Decrypted file saved as {:?}!", output_path),
-                                    Err(_) => eprintln!("Failed to decrypt file."),
+                                    Err(e) => print_err!("{}", e),
                                 };
                             }
                             Err(error) => {
-                                eprintln!("Failed to get current directory: {}.", error)
+                                print_err!("Failed to get current directory: {}.", error)
                             }
                         }
                     } else if let Some(output_dir) = sub_matches.get_one::<PathBuf>("OUTPUTDIR") {
@@ -170,10 +179,10 @@ fn main() {
                                 let output_path = decrypted_file_path(&file_path, &output_dir);
                                 match decrypt_file(&file_path.to_path_buf(), &output_path) {
                                     Ok(_) => println!("Decrypted file saved as {:?}!", output_path),
-                                    Err(_) => eprintln!("Failed to decrypt file."),
+                                    Err(e) => print_err!("{}", e),
                                 };
                             }
-                            false => eprintln!("Failed to get {:?} directory.", output_dir),
+                            false => print_err!("Failed to get {:?} directory.", output_dir),
                         }
                     } else {
                         match file_path.parent() {
@@ -181,17 +190,18 @@ fn main() {
                                 let output_path = decrypted_file_path(&file_path, &parent_dir);
                                 match decrypt_file(&file_path.to_path_buf(), &output_path) {
                                     Ok(_) => println!("Decrypted file saved as {:?}!", output_path),
-                                    Err(_) => eprintln!("Failed to decrypt file."),
+                                    Err(e) => print_err!("{}", e),
                                 };
                             }
-                            None => eprintln!("Failed to get target file parent directory."),
+                            None => print_err!("Failed to get target file parent directory."),
                         }
                     }
                 } else {
-                    println!(
-                        "{:?} does not exist!\nCheck target file and try again.",
+                    print_err!(
+                        "{:?} does not exist!",
                         filepath
                     );
+                    print_advice!("Check target file and try again.");
                     return;
                 }
             }
@@ -226,7 +236,7 @@ fn main() {
 
                         match set_password(&password) {
                             Ok(_) => println!("{password} successfully set as your password."),
-                            Err(e) => eprintln!("Failed to set password! Please try again.{e}"),
+                            Err(e) => print_err!("Failed to set password! Please try again.{}", e),
                         };
                     }
                 }
@@ -266,11 +276,11 @@ fn main() {
                                     "\"{new_password}\" was successfully set as your new password."
                                 )
                             }
-                            Err(_) => eprintln!("An error occured! Try again."),
+                            Err(_) => print_err!("An error occured! Try again."),
                         };
                     }
                     Err(_) => {
-                        eprintln!("Password has not been set yet. Use --init flag to set it.")
+                        print_err!("Password has not been set yet. Use --init flag to set it.")
                     }
                 }
             }
