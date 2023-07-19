@@ -26,9 +26,6 @@ custom_error! {pub EncryptionError
 }
 
 pub fn encrypt_file(input_path: &PathBuf, output_path: &PathBuf) -> Result<(), EncryptionError> {
-    // add a layer of verification if the file is already an encrypted one
-    // then ask to decrypt the file and encrypt it again with new version
-
     let mut input_file: File = File::open(input_path)?;
     let mut output_file: File = File::create(output_path)?;
 
