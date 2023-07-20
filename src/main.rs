@@ -310,7 +310,7 @@ fn main() {
                                     password
                                 )
                             }
-                            Err(e) => print_err!("Failed to set password! -> {}", e),
+                            Err(e) => print_err!("Failed to set password! > {}", e),
                         };
                     }
                 }

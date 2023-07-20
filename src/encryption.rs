@@ -1,5 +1,5 @@
 use rand::RngCore;
-use simplecrypt::{decrypt, encrypt};
+use simplecrypt::{decrypt, encrypt, DecryptionError};
 use std::fs::{File, OpenOptions};
 use std::io::{Error, Read, Seek, SeekFrom, Write};
 use std::path::{Path, PathBuf};
@@ -8,28 +8,27 @@ use std::time::Duration;
 
 const ENCRYPTION_KEYWORD: &str = "MUCLI_ENCRYPT";
 const CONFIG_FILE: &str = "config.txt";
-use crate::utils::{arrow_progress, filter_map_lines, key_exists, set_key};
+use crate::utils::{arrow_progress, filter_map_lines, key_exists, set_key, GenericError};
 
 extern crate custom_error;
 use custom_error::custom_error;
 
 custom_error! {pub EncryptionError
     Io{source: Error} = "{source}",
+    Generic{source: GenericError} = "{source}",
+    Decrypt{source: DecryptionError} = "{source}",
     NoKeyFound = "No key found in config.txt",
     RetrievingKey = "Error retrieving encryption key.",
     NoVersionFound = "No version found in config.txt",
     NoVersionSet = "No version set for this file",
     VersionFormat = "Invalid version format found in config.txt",
-    DecryptionFailed{filename: String} = "Decryption of \"{filename}\" failed",
     EncryptionFailed{filename: String} = "Encryption of \"{filename}\" failed",
     ConfigNotFound = "Config file not found or unreadable",
     UpdateBeforeInit = "Cannot update the key. Please init first.",
     CannotAccessFile{filename: String} = "Cannot access file \"{filename}\"",
     InvalidFileContent = "Target file must be a crypted file",
     DecryptNotCryptedFile = "Cannot decrypt a non-encrypted file",
-    KeyUpdateFailed = "Impossible to update encryption key",
-    EncryptPassword = "Failed to encrypt password",
-    DecryptPassword = "Failed to decrypt password"
+    KeyUpdateFailed = "Impossible to update encryption key"
 }
 
 struct FileHeader {
@@ -117,14 +116,7 @@ pub fn decrypt_file(input_path: &PathBuf, output_path: &PathBuf) -> Result<(), E
 
     let crypted_content: Vec<u8> = file_content(encrypted_data)?;
 
-    let mut decrypted_content: Vec<u8> = match decrypt(&crypted_content, &key) {
-        Ok(result) => result,
-        Err(_) => {
-            return Err(EncryptionError::DecryptionFailed {
-                filename: input_path.to_str().unwrap().to_owned(),
-            })
-        }
-    };
+    let mut decrypted_content: Vec<u8> = decrypt(&crypted_content, &key)?;
 
     file_header.decrement_layer();
     if file_header.encryption_layer > 0 {
@@ -157,22 +149,14 @@ fn set_encryption_key() -> Result<(), EncryptionError> {
         generate_encryption_key(32)
     );
 
-    set_key::<EncryptionError>(new_line)?;
+    set_key(new_line)?;
 
     Ok(())
 }
 
 fn encryption_keys() -> Result<Vec<Vec<u8>>, EncryptionError> {
-    let mut file = OpenOptions::new()
-        .write(true)
-        .create(true)
-        .read(true)
-        .open(CONFIG_FILE)?;
-
-    let mut buffer = String::new();
-    file.read_to_string(&mut buffer)?;
-
-    let mut filtered_lines = extract_filtered_lines(&buffer)?;
+    let mut filtered_lines =
+        filter_map_lines(ENCRYPTION_KEYWORD, |line| parse_encryption_key_line(line))?;
 
     if filtered_lines.is_empty() {
         return Err(EncryptionError::NoKeyFound);
@@ -183,16 +167,6 @@ fn encryption_keys() -> Result<Vec<Vec<u8>>, EncryptionError> {
     let encryption_keys = filtered_lines.into_iter().map(|(_, vec)| vec).collect();
 
     Ok(encryption_keys)
-}
-
-fn extract_filtered_lines(buffer: &str) -> Result<Vec<(u32, Vec<u8>)>, EncryptionError> {
-    let filtered_lines: Vec<(u32, Vec<u8>)> = buffer
-        .lines()
-        .filter(|line| line.starts_with(&format!("{}=", ENCRYPTION_KEYWORD)))
-        .map(|line| parse_encryption_key_line(line))
-        .collect();
-
-    Ok(filtered_lines)
 }
 
 fn parse_encryption_key_line(line: &str) -> (u32, Vec<u8>) {
@@ -216,7 +190,7 @@ fn parse_encryption_key_line(line: &str) -> (u32, Vec<u8>) {
 }
 
 pub fn init_encryption_key() -> Result<(), EncryptionError> {
-    match key_exists::<EncryptionError>(ENCRYPTION_KEYWORD) {
+    match key_exists(ENCRYPTION_KEYWORD) {
         Ok(val) => {
             if let false = val {
                 set_encryption_key()?
@@ -226,8 +200,9 @@ pub fn init_encryption_key() -> Result<(), EncryptionError> {
         Err(_) => Err(EncryptionError::ConfigNotFound),
     }
 }
+
 pub fn update_encryption_key() -> Result<(), EncryptionError> {
-    match key_exists::<EncryptionError>(ENCRYPTION_KEYWORD) {
+    match key_exists(ENCRYPTION_KEYWORD) {
         Ok(val) => {
             if let true = val {
                 set_encryption_key()?
@@ -239,6 +214,7 @@ pub fn update_encryption_key() -> Result<(), EncryptionError> {
         Err(_) => Err(EncryptionError::ConfigNotFound),
     }
 }
+
 pub fn update_file_encryption_key(filepath: &PathBuf) -> Result<(), EncryptionError> {
     let mut file = File::open(filepath)?;
     let initial_layer = get_file_data(&mut file)?.encryption_layer;

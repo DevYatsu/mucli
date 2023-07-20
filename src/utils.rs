@@ -1,12 +1,22 @@
 use std::{
     fs::{File, OpenOptions},
     io::{Error, Read, Seek, SeekFrom, Write},
+    num::ParseIntError,
 };
 
 use dialoguer::console::Term;
 use indicatif::{ProgressBar, ProgressStyle};
-
 const CONFIG_FILE: &str = "config.txt";
+
+extern crate custom_error;
+use custom_error::custom_error;
+
+custom_error! {pub GenericError
+    Io{source: Error} = "{source}",
+    Format{source: ParseIntError} = "{source}",
+    KeyNotFound{key: String, filename: String} = "Key \"{key}\" not found in {filename}.",
+    Unknown = "unknown error"
+}
 
 pub fn arrow_progress(steps: u64) -> ProgressBar {
     let pb = ProgressBar::new(steps);
@@ -27,7 +37,7 @@ pub fn arrow_progress(steps: u64) -> ProgressBar {
     pb
 }
 
-pub fn set_key<T: std::convert::From<std::io::Error>>(new_line: String) -> Result<(), T> {
+pub fn set_key(new_line: String) -> Result<(), GenericError> {
     let mut file = OpenOptions::new()
         .write(true)
         .create(true)
@@ -49,10 +59,8 @@ pub fn set_key<T: std::convert::From<std::io::Error>>(new_line: String) -> Resul
 
     Ok(())
 }
-pub fn replace_key<T: std::convert::From<std::io::Error>>(
-    keyword: &str,
-    new_line: String,
-) -> Result<(), T> {
+
+pub fn replace_key(keyword: &str, new_line: String) -> Result<(), GenericError> {
     let mut file = OpenOptions::new()
         .read(true)
         .write(true)
@@ -82,7 +90,7 @@ pub fn replace_key<T: std::convert::From<std::io::Error>>(
     Ok(())
 }
 
-pub fn get_keys<T: std::convert::From<std::io::Error>>(keyword: &str) -> Result<Vec<String>, T> {
+pub fn get_keys(keyword: &str) -> Result<Vec<String>, GenericError> {
     let mut file: File = File::open(CONFIG_FILE)?;
 
     let mut buffer: String = String::new();
@@ -94,7 +102,25 @@ pub fn get_keys<T: std::convert::From<std::io::Error>>(keyword: &str) -> Result<
         .map(|l| l.split('=').nth(1).unwrap().trim().to_string())
         .collect::<Vec<String>>())
 }
-pub fn filter_map_lines<F, T>(keyword: &str, f: F) -> Result<Vec<T>, Error>
+
+pub fn get_key(keyword: &str) -> Result<String, GenericError> {
+    let mut file: File = File::open(CONFIG_FILE)?;
+
+    let mut buffer: String = String::new();
+    file.read_to_string(&mut buffer)?;
+
+    for line in buffer.lines() {
+        if line.starts_with(&format!("{}{}", keyword, "=")) {
+            return Ok(line.split('=').nth(1).unwrap().trim().to_string());
+        }
+    }
+    Err(GenericError::KeyNotFound {
+        key: keyword.to_owned(),
+        filename: CONFIG_FILE.to_owned(),
+    })
+}
+
+pub fn filter_map_lines<F, T>(keyword: &str, f: F) -> Result<Vec<T>, GenericError>
 where
     F: FnMut(&str) -> T,
 {
@@ -110,7 +136,7 @@ where
         .collect())
 }
 
-pub fn key_exists<T: std::convert::From<std::io::Error>>(keyword: &str) -> Result<bool, T> {
+pub fn key_exists(keyword: &str) -> Result<bool, GenericError> {
     let mut file: File = OpenOptions::new()
         .write(true)
         .create(true)
