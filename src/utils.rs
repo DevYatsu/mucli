@@ -1,6 +1,6 @@
 use std::{
     fs::{File, OpenOptions},
-    io::{Read, Seek, SeekFrom, Write},
+    io::{Error, Read, Seek, SeekFrom, Write},
 };
 
 use dialoguer::console::Term;
@@ -93,6 +93,21 @@ pub fn get_keys<T: std::convert::From<std::io::Error>>(keyword: &str) -> Result<
         .filter(|line| line.starts_with(&format!("{}{}", keyword, "=")))
         .map(|l| l.split('=').nth(1).unwrap().trim().to_string())
         .collect::<Vec<String>>())
+}
+pub fn filter_map_lines<F, T>(keyword: &str, f: F) -> Result<Vec<T>, Error>
+where
+    F: FnMut(&str) -> T,
+{
+    let mut file: File = File::open(CONFIG_FILE)?;
+
+    let mut buffer: String = String::new();
+    file.read_to_string(&mut buffer)?;
+
+    Ok(buffer
+        .lines()
+        .filter(|line| line.starts_with(&format!("{}=", keyword)))
+        .map(f)
+        .collect())
 }
 
 pub fn key_exists<T: std::convert::From<std::io::Error>>(keyword: &str) -> Result<bool, T> {

@@ -8,7 +8,7 @@ use std::time::Duration;
 
 const ENCRYPTION_KEYWORD: &str = "MUCLI_ENCRYPT";
 const CONFIG_FILE: &str = "config.txt";
-use crate::utils::{arrow_progress, key_exists, set_key};
+use crate::utils::{arrow_progress, filter_map_lines, key_exists, set_key};
 
 extern crate custom_error;
 use custom_error::custom_error;
@@ -282,18 +282,14 @@ fn latest_encryption_version() -> Result<u32, EncryptionError> {
     let mut buffer: String = String::new();
     file.read_to_string(&mut buffer)?;
 
-    let mut filtered_lines: Vec<u32> = buffer
-        .lines()
-        .filter(|line| line.starts_with(&format!("{}=", ENCRYPTION_KEYWORD)))
-        .map(|line| {
-            line.split('=')
-                .nth(1)
-                .unwrap()
-                .trim()
-                .parse::<u32>()
-                .unwrap()
-        })
-        .collect();
+    let mut filtered_lines: Vec<u32> = filter_map_lines(ENCRYPTION_KEYWORD, |line| {
+        line.split('=')
+            .nth(1)
+            .unwrap()
+            .trim()
+            .parse::<u32>()
+            .unwrap()
+    })?;
 
     if filtered_lines.len() == 0 {
         return Err(EncryptionError::NoVersionFound);
