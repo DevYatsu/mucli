@@ -23,6 +23,7 @@ use std::{
     env::current_dir,
     path::{Path, PathBuf},
 };
+use utils::config_interact::filter_map_lines;
 
 fn main() {
     let matches = command!()
@@ -39,8 +40,8 @@ fn main() {
                 )
                 .arg(arg!(-'i' --"init" [NEW_PASSWORD] "Set password for first time").action(ArgAction::Set))
                 .arg(arg!(-'c' --"change" [ACTUAL_PASSWORD] "Change password when set").action(ArgAction::Set))
-                .arg(arg!(-'r' --"reset" "Reset password by answering a set of questions").action(ArgAction::Set))
-                .arg(arg!(-'m' --"modifyQ" [PASSWORD] "Add and remove questions you will have to answer to to reset your password").action(ArgAction::Set))
+                .arg(arg!(-'r' --"reset" "Reset password by answering a set of questions").action(ArgAction::SetTrue))
+                .arg(arg!(-'m' --"modifyQ" [PASSWORD] "Add and remove questions you will have to answer in order to reset your password").action(ArgAction::Set))
         )
         .subcommand(
             Command::new("encrypt")
@@ -252,7 +253,7 @@ fn main() {
                                     .with_prompt("Enter your password")
                                     .with_confirmation(
                                         "Confirm your password",
-                                        "The passwords do not match",
+                                        "The passwords don't match",
                                     )
                                     .interact()
                                     .unwrap()
@@ -300,24 +301,19 @@ fn main() {
                                 print_success!(
                                     "\"{}\" was successfully set as your new password",
                                     new_password
-                                )
+                                );
+                                return;
                             }
-                            Err(e) => print_err!("{}", e),
+                            Err(e) => {
+                                print_err!("{}", e);
+                                return;
+                            }
                         };
                     }
                     Err(_) => {
                         print_err!("Password has not been set yet");
-                        print_success!("Use \"password --init\" to set it")
-                    }
-                }
-            } else if let true = sub_matches.contains_id("reset") {
-                match get_password() {
-                    Ok(password) => {
-                        todo!()
-                    }
-                    Err(_) => {
-                        print_err!("Password has not been set yet");
-                        print_success!("Use \"password --init\" to set it")
+                        print_success!("Use \"password --init\" to set it");
+                        return;
                     }
                 }
             } else if let true = sub_matches.contains_id("modifyQ") {
@@ -370,7 +366,16 @@ fn main() {
                                 let question: String = Input::with_theme(&ColorfulTheme::default())
                                     .with_prompt("Your Question")
                                     .validate_with(|input: &String| -> Result<(), &str> {
-                                        if input.len() > 9 {
+                                        let questions: Vec<String> = match retrieve_questions() {
+                                            Ok(questions) => questions,
+                                            Err(_) => vec![],
+                                        };
+                                        if questions
+                                            .iter()
+                                            .any(|line| line == &format!("{}", input))
+                                        {
+                                            Err("Cannot set a question twice")
+                                        } else if input.len() > 9 {
                                             Ok(())
                                         } else {
                                             Err("Question must be at least 10 characters long")
@@ -428,7 +433,107 @@ fn main() {
                     }
                     Err(_) => {
                         print_err!("Password has not been set yet");
-                        print_success!("Use \"password --init\" to set it")
+                        print_success!("Use \"password --init\" to set it");
+                        return;
+                    }
+                }
+            } else if let true = sub_matches.contains_id("reset") {
+                match get_password() {
+                    Ok(_) => match retrieve_questions() {
+                        Ok(mut questions) => {
+                            if questions.len() < 3 {
+                                print_err!("Not enough questions were set");
+                                print_warning!("3 questions are needed to reset password");
+                                return;
+                            }
+                            questions.push("Cancel".to_string());
+                            let mut answered_questions: Vec<[String; 2]> = vec![];
+                            const QUESTION_KEYWORD: &str = "MUCLI_QUESTION";
+
+                            loop {
+                                let chosen: usize =
+                                    Select::with_theme(&theme::ColorfulTheme::default())
+                                        .with_prompt("A question to answer")
+                                        .items(&questions)
+                                        .default(0)
+                                        .interact()
+                                        .unwrap();
+
+                                if chosen == questions.len() - 1 {
+                                    return;
+                                }
+
+                                let answer: String = Input::with_theme(&ColorfulTheme::default())
+                                    .with_prompt("Your Answer")
+                                    .interact_text()
+                                    .unwrap();
+
+                                questions = match filter_map_lines(|line| -> Option<String> {
+                                    if answered_questions.iter().any(|[q, a]| {
+                                        line == &format!("{}={}={}", QUESTION_KEYWORD, q, a)
+                                    }) {
+                                        None
+                                    } else if line
+                                        == &format!(
+                                            "{}={}={}",
+                                            QUESTION_KEYWORD, questions[chosen], answer
+                                        )
+                                    {
+                                        answered_questions.push([
+                                            questions[chosen].to_owned(),
+                                            answer.to_owned(),
+                                        ]);
+                                        if answered_questions.len() < 3 {
+                                            print_success!("That's a right answer");
+                                        }
+                                        None
+                                    } else if line.starts_with(&format!("{}=", QUESTION_KEYWORD)) {
+                                        Some(line.split('=').nth(1).unwrap().to_string())
+                                    } else {
+                                        None
+                                    }
+                                }) {
+                                    Ok(v) => v,
+                                    Err(_) => {
+                                        print_err!("An error occured!");
+                                        return;
+                                    }
+                                };
+                                if answered_questions.len() == 3 {
+                                    print_success!(
+                                        "that's 3 right answers! Change your password now!"
+                                    );
+                                    break;
+                                }
+                                questions.push("Cancel".to_string());
+                            }
+                            let new_password: String =
+                                Password::with_theme(&ColorfulTheme::default())
+                                    .with_prompt("Enter your new password")
+                                    .with_confirmation(
+                                        "Confirm your new password",
+                                        "The passwords don't match",
+                                    )
+                                    .interact()
+                                    .unwrap();
+
+                            match set_password(&new_password) {
+                                Ok(_) => print_success!(
+                                    "New password \"{}\" set successfully!",
+                                    new_password
+                                ),
+                                Err(_) => print_err!("Failed to set new password"),
+                            };
+                        }
+                        Err(_) => {
+                            print_err!("No question set");
+                            return;
+                        }
+                    },
+                    Err(_) => {
+                        print_err!("Password has not been set yet");
+                        print_success!("Use \"password --init\" to set it");
+                        return;
                     }
                 }
             }

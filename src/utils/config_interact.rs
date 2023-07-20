@@ -69,6 +69,7 @@ pub fn get_key(keyword: &str) -> Result<String, GenericError> {
     })
 }
 
+//remove filter and map to only let filter_map
 pub fn filter_and_map_lines<F, T>(keyword: &str, f: F) -> Result<Vec<T>, GenericError>
 where
     F: FnMut(&str) -> T,
