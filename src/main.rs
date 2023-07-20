@@ -46,17 +46,9 @@ fn main() {
                         .required(true)
                         .args(["init", "change", "reset"]),
                 )
-                .arg(
-                    arg!(-'i' --"init" [NEW_PASSWORD] "Set password for first time")
-                        .action(ArgAction::Set),
-                )
-                .arg(
-                    arg!(-'c' --"change"  [INITIAL_PASSWORD] "Change password when set")
-                        .action(ArgAction::Set),
-                )                .arg(
-                    arg!(-'r' --"reset" "Reset password (future release)")
-                        .action(ArgAction::SetTrue),
-                ),
+                .arg(arg!(-'i' --"init" [NEW_PASSWORD] "Set password for first time").action(ArgAction::Set))
+                .arg(arg!(-'c' --"change" [INITIAL_PASSWORD] "Change password when set").action(ArgAction::Set))
+                .arg(arg!(-'r' --"reset" "Reset password (future release)").action(ArgAction::SetTrue)),
         )
         .subcommand(
             Command::new("encrypt")
@@ -66,53 +58,24 @@ fn main() {
                         .required(false)
                         .args(["ukey", "cdir", "sfile"]),
                 )
-                .arg(
-                    arg!(-'u' --"ukey" "Update encryption key or update encryption key of a file to the latest version")
-                        .action(ArgAction::SetTrue),
-                )
-                .arg(
-                    arg!(-'c' --"cdir" "Place output file in current dir")
-                        .action(ArgAction::SetTrue),
-                )
-                .arg(
-                    arg!(-'s' --"sfile" "Select target file as output file")
-                        .action(ArgAction::SetTrue),
-                )
-                .arg(
-                    arg!([FILEPATH] "file path of the target file")
-                        .required_unless_present_all(["ukey"])
-                        .value_parser(clap::value_parser!(PathBuf)),
-                )
-                .arg(
-                    arg!([OUTPUTDIR] "output directory [defaults: file dir]")
-                        .value_parser(clap::value_parser!(PathBuf)),
-                ),
+                .arg(arg!(-'u' --"ukey" "Update encryption key or update encryption key of a file to the latest version").action(ArgAction::SetTrue))
+                .arg(arg!(-'c' --"cdir" "Place output file in current dir").action(ArgAction::SetTrue))
+                .arg(arg!(-'s' --"sfile" "Select target file as output file").action(ArgAction::SetTrue))
+                .arg(arg!([FILEPATH] "file path of the target file").required_unless_present_all(["ukey"]).value_parser(clap::value_parser!(PathBuf)))
+                .arg(arg!([OUTPUTDIR] "output directory [defaults: file dir]").value_parser(clap::value_parser!(PathBuf))),
         )
         .subcommand(
             Command::new("decrypt")
-                .about("Decrypts the specified file and place the output file in specified dir")                
+                .about("Decrypts the specified file and place the output file in specified dir")
                 .group(
                     ArgGroup::new("decrypt_actions")
                         .required(false)
                         .args(["cdir", "sfile"]),
                 )
-                .arg(
-                    arg!(-'c' --"cdir" "Place output file in current dir")
-                        .action(ArgAction::SetTrue),
-                )                
-                .arg(
-                    arg!(-'s' --"sfile" "Select target file as output file")
-                        .action(ArgAction::SetTrue),
-                )
-                .arg(
-                    arg!([FILEPATH] "file path of the target file")
-                        .required(true)
-                        .value_parser(clap::value_parser!(PathBuf)),
-                )
-                .arg(
-                    arg!([OUTPUTDIR] "output directory [defaults: file dir]")
-                        .value_parser(clap::value_parser!(PathBuf)),
-                ),
+                .arg(arg!(-'c' --"cdir" "Place output file in current dir").action(ArgAction::SetTrue))
+                .arg(arg!(-'s' --"sfile" "Select target file as output file").action(ArgAction::SetTrue))
+                .arg(arg!([FILEPATH] "file path of the target file").required(true).value_parser(clap::value_parser!(PathBuf)))
+                .arg(arg!([OUTPUTDIR] "output directory [defaults: file dir]").value_parser(clap::value_parser!(PathBuf))),
         )
         .get_matches();
 

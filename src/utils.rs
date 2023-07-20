@@ -1,5 +1,4 @@
 use std::{
-    fs::{File, OpenOptions},
     io::{Error, Read, Seek, SeekFrom, Write},
     num::ParseIntError,
 };
@@ -16,6 +15,37 @@ custom_error! {pub GenericError
     Format{source: ParseIntError} = "{source}",
     KeyNotFound{key: String, filename: String} = "Key \"{key}\" not found in {filename}.",
     Unknown = "unknown error"
+}
+
+#[macro_export]
+macro_rules! file {
+    ($name: expr) => {{
+        let mut file = std::fs::OpenOptions::new()
+            .read(true)
+            .write(true)
+            .create(true)
+            .open($name)?;
+
+        let mut buffer = String::new();
+        file.read_to_string(&mut buffer)?;
+
+        (file, buffer)
+    }};
+}
+#[macro_export]
+macro_rules! file_as_bytes {
+    ($name: expr) => {{
+        let mut file = std::fs::OpenOptions::new()
+            .read(true)
+            .write(true)
+            .create(true)
+            .open($name)?;
+
+        let mut buffer = Vec::new();
+        file.read_to_end(&mut buffer)?;
+
+        (file, buffer)
+    }};
 }
 
 pub fn arrow_progress(steps: u64) -> ProgressBar {
@@ -38,14 +68,7 @@ pub fn arrow_progress(steps: u64) -> ProgressBar {
 }
 
 pub fn set_key(new_line: String) -> Result<(), GenericError> {
-    let mut file = OpenOptions::new()
-        .write(true)
-        .create(true)
-        .read(true)
-        .open(CONFIG_FILE)?;
-
-    let mut buffer = String::new();
-    file.read_to_string(&mut buffer)?;
+    let (mut file, buffer) = file!(CONFIG_FILE);
 
     file.seek(SeekFrom::Start(0))?; // Move the cursor to the beginning of the file
 
@@ -61,14 +84,7 @@ pub fn set_key(new_line: String) -> Result<(), GenericError> {
 }
 
 pub fn replace_key(keyword: &str, new_line: String) -> Result<(), GenericError> {
-    let mut file = OpenOptions::new()
-        .read(true)
-        .write(true)
-        .create(true)
-        .open(CONFIG_FILE)?;
-
-    let mut buffer = String::new();
-    file.read_to_string(&mut buffer)?;
+    let (mut file, buffer) = file!(CONFIG_FILE);
 
     // Create a new buffer with modified lines
     let modified_buffer = buffer
@@ -91,10 +107,7 @@ pub fn replace_key(keyword: &str, new_line: String) -> Result<(), GenericError> 
 }
 
 pub fn get_keys(keyword: &str) -> Result<Vec<String>, GenericError> {
-    let mut file: File = File::open(CONFIG_FILE)?;
-
-    let mut buffer: String = String::new();
-    file.read_to_string(&mut buffer)?;
+    let (_, buffer) = file!(CONFIG_FILE);
 
     Ok(buffer
         .lines()
@@ -104,10 +117,7 @@ pub fn get_keys(keyword: &str) -> Result<Vec<String>, GenericError> {
 }
 
 pub fn get_key(keyword: &str) -> Result<String, GenericError> {
-    let mut file: File = File::open(CONFIG_FILE)?;
-
-    let mut buffer: String = String::new();
-    file.read_to_string(&mut buffer)?;
+    let (_, buffer) = file!(CONFIG_FILE);
 
     for line in buffer.lines() {
         if line.starts_with(&format!("{}{}", keyword, "=")) {
@@ -124,10 +134,7 @@ pub fn filter_map_lines<F, T>(keyword: &str, f: F) -> Result<Vec<T>, GenericErro
 where
     F: FnMut(&str) -> T,
 {
-    let mut file: File = File::open(CONFIG_FILE)?;
-
-    let mut buffer: String = String::new();
-    file.read_to_string(&mut buffer)?;
+    let (_, buffer) = file!(CONFIG_FILE);
 
     Ok(buffer
         .lines()
@@ -137,14 +144,7 @@ where
 }
 
 pub fn key_exists(keyword: &str) -> Result<bool, GenericError> {
-    let mut file: File = OpenOptions::new()
-        .write(true)
-        .create(true)
-        .read(true)
-        .open(CONFIG_FILE)?;
-
-    let mut buffer: String = String::new();
-    file.read_to_string(&mut buffer)?;
+    let (_, buffer) = file!(CONFIG_FILE);
 
     if buffer
         .lines()

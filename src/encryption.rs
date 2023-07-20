@@ -1,13 +1,13 @@
+use crate::file_as_bytes;
 use rand::RngCore;
 use simplecrypt::{decrypt, encrypt, DecryptionError};
-use std::fs::{File, OpenOptions};
+use std::fs::File;
 use std::io::{Error, Read, Seek, SeekFrom, Write};
 use std::path::{Path, PathBuf};
 use std::thread;
 use std::time::Duration;
 
 const ENCRYPTION_KEYWORD: &str = "MUCLI_ENCRYPT";
-const CONFIG_FILE: &str = "config.txt";
 use crate::utils::{arrow_progress, filter_map_lines, key_exists, set_key, GenericError};
 
 extern crate custom_error;
@@ -55,7 +55,7 @@ impl FileHeader {
 }
 
 pub fn encrypt_file(input_path: &PathBuf, output_path: &PathBuf) -> Result<(), EncryptionError> {
-    let mut input_file: File = File::open(input_path)?;
+    let (mut input_file, input_data) = file_as_bytes!(input_path);
 
     let mut file_header = match get_file_data(&mut input_file) {
         Ok(mut header) => {
@@ -77,9 +77,6 @@ pub fn encrypt_file(input_path: &PathBuf, output_path: &PathBuf) -> Result<(), E
         Err(_) => return Err(EncryptionError::RetrievingKey),
     };
 
-    let mut input_data: Vec<u8> = Vec::new();
-    input_file.read_to_end(&mut input_data)?;
-
     let data = if file_header.encryption_layer > 0 {
         file_content(input_data)?
     } else {
@@ -97,7 +94,7 @@ pub fn encrypt_file(input_path: &PathBuf, output_path: &PathBuf) -> Result<(), E
 }
 
 pub fn decrypt_file(input_path: &PathBuf, output_path: &PathBuf) -> Result<(), EncryptionError> {
-    let mut input_file = File::open(&input_path)?;
+    let (mut input_file, encrypted_data) = file_as_bytes!(input_path);
 
     let mut file_header = get_file_data(&mut input_file)?;
 
@@ -109,10 +106,6 @@ pub fn decrypt_file(input_path: &PathBuf, output_path: &PathBuf) -> Result<(), E
         Ok(k) => k,
         Err(_) => return Err(EncryptionError::RetrievingKey),
     };
-
-    // Read the contents of the input file into a buffer
-    let mut encrypted_data: Vec<u8> = Vec::new();
-    input_file.read_to_end(&mut encrypted_data)?;
 
     let crypted_content: Vec<u8> = file_content(encrypted_data)?;
 
@@ -249,15 +242,6 @@ fn nth_encription_key(index: usize) -> Result<Vec<u8>, EncryptionError> {
 }
 
 fn latest_encryption_version() -> Result<u32, EncryptionError> {
-    let mut file: File = OpenOptions::new()
-        .write(true)
-        .create(true)
-        .read(true)
-        .open(CONFIG_FILE)?;
-
-    let mut buffer: String = String::new();
-    file.read_to_string(&mut buffer)?;
-
     let mut filtered_lines: Vec<u32> = filter_map_lines(ENCRYPTION_KEYWORD, |line| {
         line.split('=')
             .nth(1)

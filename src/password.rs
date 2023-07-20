@@ -1,10 +1,8 @@
-use std::fs::File;
-
 const PASSWORD_KEYWORD: &str = "MUCLI_PASSWORD";
 const CONFIG_FILE: &str = "config.txt";
 const PASSWORD_KEY_KEYWORD: &str = "MUCLI_KEY_PASSWORD";
 
-use std::io::{prelude::*, Error};
+use std::io::Error;
 use std::num::ParseIntError;
 
 use simplecrypt::{decrypt, encrypt, DecryptionError};
@@ -41,11 +39,6 @@ pub fn get_password() -> Result<String, PasswordError> {
         }
         .into());
     }
-
-    let mut file: File = File::open(CONFIG_FILE)?;
-
-    let mut buffer: String = String::new();
-    file.read_to_string(&mut buffer)?;
 
     let crypted_password: Vec<u8> = string_as_key::<u8>(&get_key(PASSWORD_KEYWORD)?)?;
 
