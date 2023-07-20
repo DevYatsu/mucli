@@ -20,14 +20,15 @@ Command to set a security password to access sensitive information.
 
 `mucli password --flag`
 
-#### Flags (one required):
+#### Flags (one required)
 
 - `-i, --init`: Set a password for the first time.
 - `-c, --change`: Change the existing password.
 - `-r, --reset` (future release): Reset the password.
 
-#### Example usage:
-```
+#### Password command example usage
+
+```bash
 # Set a password for the first time
 mucli password -i [optional new_password]
 
@@ -41,14 +42,15 @@ Command to encrypt a specified file and place the output file in the specified d
 
 `mucli encrypt [options] [file_path] [output_dir]`
 
-#### Flags (not required):
+#### Flags (not required)
 
 - `-u, --ukey`: Update encryption key or update the encryption key of a file to the latest version.
 - `-c, --cdir`: Place the output file in the current directory.
 - `-s, --sfile`: Select the target file as the output file.
 
-#### Example usage:
-```
+#### Encrypt command example usage
+
+```bash
 # Encrypt the file and place the output in the current directory
 mucli encrypt -c /path/to/source_file
 
@@ -68,13 +70,14 @@ Command to decrypt a specified file and place the output file in the specified d
 
 `mucli decrypt [options] [file_path] [output_dir]`
 
-#### Flags (not required):
+#### Flags (not required)
 
 - `-c, --cdir`: Place the output file in the current directory.
 - `-s, --sfile`: Select the target file as the output file.
 
-#### Example usage:
-```
+#### Decrypt command example usage
+
+```bash
 # Encrypt the file and place the output in the current directory
 mucli decrypt -c /path/to/source_file
 
