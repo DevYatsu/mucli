@@ -6,7 +6,7 @@ mucli is a versatile command-line tool offering various functionalities, includi
 
 To use mucli, follow these steps:
 
-- [Download the latest](mucli/releases) release for your operating system.
+- [Download the latest](/releases) release for your operating system.
 - Unzip the downloaded file to a preferred location on your machine.
 - Navigate to the unzipped folder in your terminal or command prompt.
 
