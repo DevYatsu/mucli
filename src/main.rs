@@ -27,6 +27,9 @@ use utils::config_interact::filter_map_lines;
 
 fn main() {
     let matches = command!()
+        .author("yatsu")
+        .name("mucli")
+        .about("A multi-purposes client line interface: mucli!")
         .propagate_version(true)
         .subcommand_required(true)
         .arg_required_else_help(true)
