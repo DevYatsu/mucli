@@ -29,6 +29,7 @@ fn main() {
     let matches = command!()
         .author("yatsu")
         .name("mucli")
+        .version("0.1.0")
         .about("A multi-purposes client line interface: mucli!")
         .propagate_version(true)
         .subcommand_required(true)

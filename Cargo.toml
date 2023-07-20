@@ -12,3 +12,7 @@ dialoguer = "0.10.4"
 indicatif = "0.17.5"
 rand = "0.8.5"
 simplecrypt = "1.0.2"
+
+[[bin]]
+name = "mucli"  # The name of the binary executable (without file extension)
+path = "src/main.rs"  # The path to the main file (entry point) for your CLI
