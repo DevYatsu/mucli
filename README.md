@@ -84,6 +84,6 @@ mucli decrypt -s /path/to/source_file
 
 ## Feedback and Contributions
 
-We welcome your feedback and contributions to improve mucli. If you encounter any issues or have suggestions for new features, please feel free to open an [issue](../issues) on our GitHub repository.
+We welcome your feedback and contributions to improve mucli. If you encounter any issues or have suggestions for new features, please feel free to open an [issue](../../issues) on our GitHub repository.
 
 Happy command-line multitasking with mucli!
