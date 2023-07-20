@@ -8,11 +8,10 @@ use std::time::Duration;
 
 const ENCRYPTION_KEYWORD: &str = "MUCLI_ENCRYPT";
 const CONFIG_FILE: &str = "config.txt";
+use crate::utils::{arrow_progress, key_exists, set_key};
 
 extern crate custom_error;
 use custom_error::custom_error;
-
-use crate::utils::arrow_progress;
 
 custom_error! {pub EncryptionError
     Io{source: Error} = "{source}",
@@ -28,7 +27,9 @@ custom_error! {pub EncryptionError
     CannotAccessFile{filename: String} = "Cannot access file \"{filename}\"",
     InvalidFileContent = "Target file must be a crypted file",
     DecryptNotCryptedFile = "Cannot decrypt a non-encrypted file",
-    KeyUpdateFailed = "Impossible to update encryption key"
+    KeyUpdateFailed = "Impossible to update encryption key",
+    EncryptPassword = "Failed to encrypt password",
+    DecryptPassword = "Failed to decrypt password"
 }
 
 struct FileHeader {
@@ -89,7 +90,7 @@ pub fn encrypt_file(input_path: &PathBuf, output_path: &PathBuf) -> Result<(), E
 
     let mut encrypted: Vec<u8> = encrypt(&data, &key);
     set_file_data(&mut encrypted, file_header)?;
-    
+
     let mut output_file: File = File::create(output_path)?;
     output_file.write_all(&encrypted)?;
 
@@ -137,19 +138,13 @@ pub fn decrypt_file(input_path: &PathBuf, output_path: &PathBuf) -> Result<(), E
     Ok(())
 }
 
-fn generate_encryption_key(length: usize) -> Vec<u8> {
+pub fn generate_encryption_key(length: usize) -> Vec<u8> {
     let mut key = vec![0u8; length];
     rand::thread_rng().fill_bytes(&mut key);
     key
 }
 
 fn set_encryption_key() -> Result<(), EncryptionError> {
-    let mut file = OpenOptions::new()
-        .write(true)
-        .create(true)
-        .read(true)
-        .open(CONFIG_FILE)?;
-
     let version = match latest_encryption_version() {
         Ok(val) => val + 1,
         Err(_) => 0,
@@ -162,18 +157,7 @@ fn set_encryption_key() -> Result<(), EncryptionError> {
         generate_encryption_key(32)
     );
 
-    let mut buffer = String::new();
-    file.read_to_string(&mut buffer)?;
-
-    file.seek(SeekFrom::Start(0))?; // Move the cursor to the beginning of the file
-
-    file.set_len(0)?;
-
-    for line in buffer.lines() {
-        writeln!(file, "{}", line)?;
-    }
-
-    writeln!(file, "{}", new_line)?;
+    set_key::<EncryptionError>(new_line)?;
 
     Ok(())
 }
@@ -231,28 +215,8 @@ fn parse_encryption_key_line(line: &str) -> (u32, Vec<u8>) {
     (key, values)
 }
 
-fn encryption_key_exists() -> Result<bool, EncryptionError> {
-    let mut file: File = OpenOptions::new()
-        .write(true)
-        .create(true)
-        .read(true)
-        .open(CONFIG_FILE)?;
-
-    let mut buffer: String = String::new();
-    file.read_to_string(&mut buffer)?;
-
-    if buffer
-        .lines()
-        .any(|line| line.starts_with(&format!("{}=", ENCRYPTION_KEYWORD)))
-    {
-        // Encryption key already exists, no need to write it again
-        return Ok(true);
-    }
-    Ok(false)
-}
-
 pub fn init_encryption_key() -> Result<(), EncryptionError> {
-    match encryption_key_exists() {
+    match key_exists::<EncryptionError>(ENCRYPTION_KEYWORD) {
         Ok(val) => {
             if let false = val {
                 set_encryption_key()?
@@ -263,7 +227,7 @@ pub fn init_encryption_key() -> Result<(), EncryptionError> {
     }
 }
 pub fn update_encryption_key() -> Result<(), EncryptionError> {
-    match encryption_key_exists() {
+    match key_exists::<EncryptionError>(ENCRYPTION_KEYWORD) {
         Ok(val) => {
             if let true = val {
                 set_encryption_key()?
@@ -281,13 +245,13 @@ pub fn update_file_encryption_key(filepath: &PathBuf) -> Result<(), EncryptionEr
     let pb = arrow_progress((initial_layer * 2) as u64);
     pb.set_prefix("Generating key...");
 
-    // first we decrypt the file 
+    // first we decrypt the file
     while let Ok(_) = get_file_data(&mut file) {
         decrypt_file(filepath, filepath)?;
         pb.inc(1);
     }
 
-    // we encrypt it again with newly generated key 
+    // we encrypt it again with newly generated key
     let mut layer = 0;
     while layer < initial_layer {
         encrypt_file(filepath, filepath)?;
@@ -367,13 +331,13 @@ fn get_file_data(file: &mut File) -> Result<FileHeader, EncryptionError> {
 
     // Move the cursor to the start of the file
     file.seek(SeekFrom::Start(0))?;
-    
+
     // Read the header marker and version bytes from the file
-    file.read_exact(&mut header_marker)?;  
+    file.read_exact(&mut header_marker)?;
     if header_marker != [0xAA, 0xBB, 0xCC, 0xDD] {
         file.seek(SeekFrom::Start(current_pos))?;
         return Err(EncryptionError::InvalidFileContent);
-    }    
+    }
 
     file.read_exact(&mut version_bytes)?;
     let encryption_version = u32::from_be_bytes(version_bytes);

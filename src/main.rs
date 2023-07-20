@@ -8,7 +8,7 @@ use encryption::{
     decrypted_file_path, encrypted_file_path, init_encryption_key, update_encryption_key,
     update_file_encryption_key,
 };
-use password::{get_password, set_password};
+use password::{get_password, init_password_key, set_password};
 use std::{
     env::current_dir,
     path::{Path, PathBuf},
@@ -25,8 +25,12 @@ macro_rules! print_advice {
     ($fmt:literal, $($arg:expr),*) => (println!("\x1B[38;5;227msolution\x1B[0m: {}", format_args!($fmt, $($arg),*)));
 }
 macro_rules! print_success {
-    ($fmt:literal) => (println!("\x1B[38;5;46msuccess\x1B[0m: {}", $fmt));
-    ($fmt:literal, $($arg:expr),*) => (println!("\x1B[38;5;46msuccess\x1B[0m: {}", format_args!($fmt, $($arg),*)));
+    ($fmt:literal) => (println!("\x1B[38;5;46minfo\x1B[0m: {}", $fmt));
+    ($fmt:literal, $($arg:expr),*) => (println!("\x1B[38;5;46minfo\x1B[0m: {}", format_args!($fmt, $($arg),*)));
+}
+macro_rules! print_future_update {
+    ($fmt:literal) => (println!("\x1B[38;5;57mupcoming\x1B[0m: {}", $fmt));
+    ($fmt:literal, $($arg:expr),*) => (println!("\x1B[38;5;57mupcoming\x1B[0m: {}", format_args!($fmt, $($arg),*)));
 }
 
 fn main() {
@@ -50,8 +54,8 @@ fn main() {
                     arg!(-'c' --"change"  [INITIAL_PASSWORD] "Change password when set")
                         .action(ArgAction::Set),
                 )                .arg(
-                    arg!(-'r' --"reset" "Reset password (not working for the moment)")
-                        .action(ArgAction::Set),
+                    arg!(-'r' --"reset" "Reset password (future release)")
+                        .action(ArgAction::SetTrue),
                 ),
         )
         .subcommand(
@@ -63,7 +67,7 @@ fn main() {
                         .args(["ukey", "cdir"]),
                 )
                 .arg(
-                    arg!(-'u' --"ukey" "Update encryption key or update encryption key of a file to the latest version.")
+                    arg!(-'u' --"ukey" "Update encryption key or update encryption key of a file to the latest version")
                         .action(ArgAction::SetTrue),
                 )
                 .arg(
@@ -117,11 +121,11 @@ fn main() {
                                     Ok(_) => {
                                         print_success!("Encrypted file saved as {:?}!", output_path)
                                     }
-                                    Err(_) => print_err!("Failed to encrypt file."),
+                                    Err(_) => print_err!("Failed to encrypt file"),
                                 };
                             }
                             Err(error) => {
-                                print_err!("Failed to get current directory: {}.", error)
+                                print_err!("Failed to get current directory: {}", error)
                             }
                         }
                     } else if let true = sub_matches.get_flag("ukey") {
@@ -140,10 +144,10 @@ fn main() {
                                     Ok(_) => {
                                         print_success!("Encrypted file saved as {:?}!", output_path)
                                     }
-                                    Err(_) => print_err!("Failed to encrypt file."),
+                                    Err(_) => print_err!("Failed to encrypt file"),
                                 };
                             }
-                            false => print_err!("Failed to get {:?} directory.", output_dir),
+                            false => print_err!("Failed to get {:?} directory", output_dir),
                         }
                     } else {
                         match file_path.parent() {
@@ -153,10 +157,10 @@ fn main() {
                                     Ok(_) => {
                                         print_success!("Encrypted file saved as {:?}!", output_path)
                                     }
-                                    Err(_) => print_err!("Failed to encrypt file."),
+                                    Err(_) => print_err!("Failed to encrypt file"),
                                 };
                             }
-                            None => print_err!("Failed to get target file parent directory."),
+                            None => print_err!("Failed to get target file parent directory"),
                         }
                     }
                 } else {
@@ -193,7 +197,7 @@ fn main() {
                                 };
                             }
                             Err(error) => {
-                                print_err!("Failed to get current directory: {}.", error)
+                                print_err!("Failed to get current directory: {}", error)
                             }
                         }
                     } else if let Some(output_dir) = sub_matches.get_one::<PathBuf>("OUTPUTDIR") {
@@ -207,7 +211,7 @@ fn main() {
                                     Err(e) => print_err!("{}", e),
                                 };
                             }
-                            false => print_err!("Failed to get {:?} directory.", output_dir),
+                            false => print_err!("Failed to get {:?} directory", output_dir),
                         }
                     } else {
                         match file_path.parent() {
@@ -220,22 +224,27 @@ fn main() {
                                     Err(e) => print_err!("{}", e),
                                 };
                             }
-                            None => print_err!("Failed to get target file parent directory."),
+                            None => print_err!("Failed to get target file parent directory"),
                         }
                     }
                 } else {
                     print_err!("{:?} does not exist!", filepath);
-                    print_advice!("Check target file and try again.");
+                    print_advice!("Check target file and try again");
                     return;
                 }
             }
         }
         Some(("password", sub_matches)) => {
+            if let Err(_) = init_password_key() {
+                // initialize encryption key if 1st time using command
+                print_err!("Initializing password key failed!");
+                return;
+            }
             if let true = sub_matches.contains_id("init") {
                 match get_password() {
                     Ok(_) => {
                         print_err!("Password is already set");
-                        print_advice!("Use --change flag to modify it.");
+                        print_advice!("Use --change|-c flag to modify it");
                     }
                     Err(_) => {
                         let password: String =
@@ -244,7 +253,7 @@ fn main() {
                                     .with_prompt("Confirm your password")
                                     .validate_with(|input: &String| -> Result<(), &str> {
                                         if input != new_password {
-                                            return Err("Passwords don't match.");
+                                            return Err("Passwords don't match");
                                         }
                                         Ok(())
                                     })
@@ -255,7 +264,7 @@ fn main() {
                                     .with_prompt("Enter your password")
                                     .with_confirmation(
                                         "Confirm your password",
-                                        "The passwords do not match.",
+                                        "The passwords do not match",
                                     )
                                     .interact()
                                     .unwrap()
@@ -263,7 +272,10 @@ fn main() {
 
                         match set_password(&password) {
                             Ok(_) => {
-                                print_success!("{} successfully set as your password.", password)
+                                print_success!(
+                                    "\"{}\" was successfully set as your new password",
+                                    password
+                                )
                             }
                             Err(e) => print_err!("Failed to set password! -> {}", e),
                         };
@@ -292,26 +304,28 @@ fn main() {
 
                         let new_password: String = Password::with_theme(&ColorfulTheme::default())
                             .with_prompt("Enter your new password")
-                            .with_confirmation(
-                                "Confirm your new password",
-                                "Passwords don't match.",
-                            )
+                            .with_confirmation("Confirm your new password", "Passwords don't match")
                             .interact()
                             .unwrap();
 
                         match set_password(&new_password) {
                             Ok(_) => {
                                 print_success!(
-                                    "\"{}\" was successfully set as your new password.", new_password
+                                    "\"{}\" was successfully set as your new password",
+                                    new_password
                                 )
                             }
                             Err(e) => print_err!("{}", e),
                         };
                     }
                     Err(_) => {
-                        print_advice!("Password has not been set yet. Use --init flag to set it.")
+                        print_err!("Password has not been set yet");
+                        print_advice!("Use --init|-i flag to set it")
                     }
                 }
+            } else if let true = sub_matches.contains_id("reset") {
+                print_err!("Impossible to reset password");
+                print_future_update!("Feature coming in the next release!")
             }
         }
         _ => unreachable!("Exhausted list of subcommands and subcommand_required prevents `None`"),
