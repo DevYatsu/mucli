@@ -8,7 +8,11 @@ use std::thread;
 use std::time::Duration;
 
 const ENCRYPTION_KEYWORD: &str = "MUCLI_ENCRYPT";
-use crate::utils::{arrow_progress, filter_map_lines, key_exists, set_key, GenericError};
+use crate::utils::{
+    config_interact::{filter_map_lines, key_exists, set_key},
+    terminal::arrow_progress,
+    GenericError,
+};
 
 extern crate custom_error;
 use custom_error::custom_error;

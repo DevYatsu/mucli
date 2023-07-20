@@ -1,5 +1,6 @@
 mod encryption;
 mod password;
+mod useful;
 mod utils;
 
 use clap::{arg, command, ArgAction, ArgGroup, Command};
@@ -320,6 +321,7 @@ fn main() {
                     }
                 }
             } else if let true = sub_matches.contains_id("reset") {
+                // need to set 3 questions that the users can answer to that r personal for instance
                 print_err!("Impossible to reset password");
                 print_future_update!("Feature coming in the next release!")
             }

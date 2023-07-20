@@ -8,7 +8,10 @@ use std::num::ParseIntError;
 use simplecrypt::{decrypt, encrypt, DecryptionError};
 
 use crate::encryption::{generate_encryption_key, EncryptionError};
-use crate::utils::{get_key, key_exists, replace_key, set_key, string_as_key, GenericError};
+use crate::utils::{
+    config_interact::{get_key, key_exists, replace_key, set_key, string_as_key},
+    GenericError,
+};
 
 extern crate custom_error;
 use custom_error::custom_error;
