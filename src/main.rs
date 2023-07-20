@@ -64,7 +64,7 @@ fn main() {
                 .group(
                     ArgGroup::new("encrypt_actions")
                         .required(false)
-                        .args(["ukey", "cdir"]),
+                        .args(["ukey", "cdir", "sfile"]),
                 )
                 .arg(
                     arg!(-'u' --"ukey" "Update encryption key or update encryption key of a file to the latest version")
@@ -75,8 +75,12 @@ fn main() {
                         .action(ArgAction::SetTrue),
                 )
                 .arg(
+                    arg!(-'s' --"sfile" "Select target file as output file")
+                        .action(ArgAction::SetTrue),
+                )
+                .arg(
                     arg!([FILEPATH] "file path of the target file")
-                        .required_unless_present("ukey")
+                        .required_unless_present_all(["ukey"])
                         .value_parser(clap::value_parser!(PathBuf)),
                 )
                 .arg(
@@ -86,9 +90,18 @@ fn main() {
         )
         .subcommand(
             Command::new("decrypt")
-                .about("Decrypts the specified file and place the output file in specified dir")
+                .about("Decrypts the specified file and place the output file in specified dir")                
+                .group(
+                    ArgGroup::new("decrypt_actions")
+                        .required(false)
+                        .args(["cdir", "sfile"]),
+                )
                 .arg(
                     arg!(-'c' --"cdir" "Place output file in current dir")
+                        .action(ArgAction::SetTrue),
+                )                
+                .arg(
+                    arg!(-'s' --"sfile" "Select target file as output file")
                         .action(ArgAction::SetTrue),
                 )
                 .arg(
@@ -113,7 +126,17 @@ fn main() {
                 }
                 let file_path: &Path = Path::new(filepath);
                 if file_path.exists() {
-                    if let true = sub_matches.get_flag("cdir") {
+                    if let true = sub_matches.get_flag("sfile") {
+                        match encrypt_file(&file_path.to_path_buf(), &file_path.to_path_buf()) {
+                            Ok(_) => {
+                                print_success!(
+                                    "{:?} content replaced with crypted one!",
+                                    &file_path
+                                )
+                            }
+                            Err(_) => print_err!("Failed to encrypt file"),
+                        };
+                    } else if let true = sub_matches.get_flag("cdir") {
                         match current_dir() {
                             Ok(current_dir) => {
                                 let output_path = encrypted_file_path(&file_path, &current_dir);
@@ -185,7 +208,17 @@ fn main() {
             if let Some(filepath) = sub_matches.get_one::<PathBuf>("FILEPATH") {
                 let file_path: &Path = Path::new(filepath);
                 if file_path.exists() {
-                    if let true = sub_matches.get_flag("cdir") {
+                    if let true = sub_matches.get_flag("sfile") {
+                        match decrypt_file(&file_path.to_path_buf(), &file_path.to_path_buf()) {
+                            Ok(_) => {
+                                print_success!(
+                                    "{:?} content replaced with decrypted one!",
+                                    &file_path
+                                )
+                            }
+                            Err(_) => print_err!("Failed to encrypt file"),
+                        };
+                    } else if let true = sub_matches.get_flag("cdir") {
                         match current_dir() {
                             Ok(current_dir) => {
                                 let output_path = decrypted_file_path(&file_path, &current_dir);
