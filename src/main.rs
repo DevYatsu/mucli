@@ -1,38 +1,28 @@
 mod encryption;
 mod password;
-mod useful;
 mod utils;
 
+use crate::{
+    encryption::{decrypt_file, encrypt_file},
+    password::add_password_recovery_question,
+};
 use clap::{arg, command, ArgAction, ArgGroup, Command};
-use dialoguer::{theme::ColorfulTheme, Password};
+use dialoguer::{
+    theme::{self, ColorfulTheme},
+    Input, Password, Select,
+};
 use encryption::{
     decrypted_file_path, encrypted_file_path, init_encryption_key, update_encryption_key,
     update_file_encryption_key,
 };
-use password::{get_password, init_password_key, set_password};
+use password::{
+    get_password, init_password_key, remove_password_recovery_question, retrieve_questions,
+    set_password,
+};
 use std::{
     env::current_dir,
     path::{Path, PathBuf},
 };
-
-use crate::encryption::{decrypt_file, encrypt_file};
-
-macro_rules! print_err {
-    ($fmt:literal) => (println!("\x1B[38;5;196merror\x1B[0m: {}", $fmt));
-    ($fmt:literal, $($arg:expr),*) => (println!("\x1B[38;5;196merror\x1B[0m: {}", format_args!($fmt, $($arg),*)));
-}
-macro_rules! print_advice {
-    ($fmt:literal) => (println!("\x1B[38;5;227msolution\x1B[0m: {}", $fmt));
-    ($fmt:literal, $($arg:expr),*) => (println!("\x1B[38;5;227msolution\x1B[0m: {}", format_args!($fmt, $($arg),*)));
-}
-macro_rules! print_success {
-    ($fmt:literal) => (println!("\x1B[38;5;46minfo\x1B[0m: {}", $fmt));
-    ($fmt:literal, $($arg:expr),*) => (println!("\x1B[38;5;46minfo\x1B[0m: {}", format_args!($fmt, $($arg),*)));
-}
-macro_rules! print_future_update {
-    ($fmt:literal) => (println!("\x1B[38;5;57mupcoming\x1B[0m: {}", $fmt));
-    ($fmt:literal, $($arg:expr),*) => (println!("\x1B[38;5;57mupcoming\x1B[0m: {}", format_args!($fmt, $($arg),*)));
-}
 
 fn main() {
     let matches = command!()
@@ -45,11 +35,12 @@ fn main() {
                 .group(
                     ArgGroup::new("password_action")
                         .required(true)
-                        .args(["init", "change", "reset"]),
+                        .args(["init", "change", "reset", "modifyQ"]),
                 )
                 .arg(arg!(-'i' --"init" [NEW_PASSWORD] "Set password for first time").action(ArgAction::Set))
-                .arg(arg!(-'c' --"change" [INITIAL_PASSWORD] "Change password when set").action(ArgAction::Set))
-                .arg(arg!(-'r' --"reset" "Reset password (future release)").action(ArgAction::SetTrue)),
+                .arg(arg!(-'c' --"change" [ACTUAL_PASSWORD] "Change password when set").action(ArgAction::Set))
+                .arg(arg!(-'r' --"reset" "Reset password by answering a set of questions").action(ArgAction::Set))
+                .arg(arg!(-'m' --"modifyQ" [PASSWORD] "Add and remove questions you will have to answer to to reset your password").action(ArgAction::Set))
         )
         .subcommand(
             Command::new("encrypt")
@@ -152,7 +143,7 @@ fn main() {
                     }
                 } else {
                     print_err!("{:?} does not exist!", filepath);
-                    print_advice!("Check target file and try again");
+                    print_success!("Check target file and try again");
                     return;
                 }
             } else if let true = sub_matches.get_flag("ukey") {
@@ -226,7 +217,7 @@ fn main() {
                     }
                 } else {
                     print_err!("{:?} does not exist!", filepath);
-                    print_advice!("Check target file and try again");
+                    print_success!("Check target file and try again");
                     return;
                 }
             }
@@ -241,7 +232,7 @@ fn main() {
                 match get_password() {
                     Ok(_) => {
                         print_err!("Password is already set");
-                        print_advice!("Use --change|-c flag to modify it");
+                        print_success!("Use \"password --change\" to modify it");
                     }
                     Err(_) => {
                         let password: String =
@@ -285,7 +276,6 @@ fn main() {
                             if *password_input != password {
                                 print_err!("Invalid password put as argument!");
                                 return;
-                            } else {
                             }
                         } else {
                             let actual_password: String =
@@ -317,13 +307,130 @@ fn main() {
                     }
                     Err(_) => {
                         print_err!("Password has not been set yet");
-                        print_advice!("Use --init|-i flag to set it")
+                        print_success!("Use \"password --init\" to set it")
                     }
                 }
             } else if let true = sub_matches.contains_id("reset") {
-                // need to set 3 questions that the users can answer to that r personal for instance
-                print_err!("Impossible to reset password");
-                print_future_update!("Feature coming in the next release!")
+                match get_password() {
+                    Ok(password) => {
+                        todo!()
+                    }
+                    Err(_) => {
+                        print_err!("Password has not been set yet");
+                        print_success!("Use \"password --init\" to set it")
+                    }
+                }
+            } else if let true = sub_matches.contains_id("modifyQ") {
+                match get_password() {
+                    Ok(password) => {
+                        if let Some(password_input) = sub_matches.get_one::<String>("modifyQ") {
+                            if *password_input != password {
+                                print_err!("Wrong password!");
+                                return;
+                            }
+                        } else {
+                            let actual_password: String =
+                                Password::with_theme(&ColorfulTheme::default())
+                                    .with_prompt("Enter your current password")
+                                    .interact()
+                                    .unwrap();
+                            if actual_password != password {
+                                print_err!("Wrong password!");
+                                return;
+                            }
+                        }
+                        // password is right from here on
+
+                        loop {
+                            let items = vec![
+                                "List questions",
+                                "Add a question",
+                                "Remove a question",
+                                "Quit",
+                            ];
+                            let chosen: usize =
+                                Select::with_theme(&theme::ColorfulTheme::default())
+                                    .with_prompt("Choose an option")
+                                    .items(&items)
+                                    .default(0)
+                                    .interact()
+                                    .unwrap();
+
+                            if chosen == 0 {
+                                match retrieve_questions() {
+                                    Ok(questions) => {
+                                        println!("Questions List:");
+                                        for question in &questions {
+                                            println!("• {}", question);
+                                        }
+                                    }
+                                    Err(_) => print_err!("No question set"),
+                                }
+                            } else if chosen == 1 {
+                                let question: String = Input::with_theme(&ColorfulTheme::default())
+                                    .with_prompt("Your Question")
+                                    .validate_with(|input: &String| -> Result<(), &str> {
+                                        if input.len() > 9 {
+                                            Ok(())
+                                        } else {
+                                            Err("Question must be at least 10 characters long")
+                                        }
+                                    })
+                                    .interact_text()
+                                    .unwrap();
+                                let answer: String = Input::with_theme(&ColorfulTheme::default())
+                                    .with_prompt("The Answer")
+                                    .validate_with(|input: &String| -> Result<(), &str> {
+                                        if input.len() > 2 {
+                                            Ok(())
+                                        } else {
+                                            Err("Question must be at least 3 characters long")
+                                        }
+                                    })
+                                    .interact_text()
+                                    .unwrap();
+
+                                match add_password_recovery_question(&question, &answer) {
+                                    Ok(_) => {
+                                        print_success!("Question and answer add successfully!")
+                                    }
+                                    Err(_) => print_err!("Failed to add question and answer"),
+                                };
+                            } else if chosen == 2 {
+                                let mut choices = match retrieve_questions() {
+                                    Ok(questions) => questions,
+                                    Err(_) => {
+                                        print_err!("No question set");
+                                        continue;
+                                    }
+                                };
+                                choices.push("Cancel".to_string());
+
+                                let chosen: usize =
+                                    Select::with_theme(&theme::ColorfulTheme::default())
+                                        .with_prompt("Which Question to remove?")
+                                        .items(&choices)
+                                        .default(0)
+                                        .interact()
+                                        .unwrap();
+
+                                if chosen == choices.len() - 1 {
+                                    continue;
+                                }
+                                match remove_password_recovery_question(chosen) {
+                                    Ok(_) => print_success!("Question removed successfully!"),
+                                    Err(_) => print_err!("Failed to remove question"),
+                                };
+                            } else if chosen == 3 {
+                                break;
+                            }
+                        }
+                    }
+                    Err(_) => {
+                        print_err!("Password has not been set yet");
+                        print_success!("Use \"password --init\" to set it")
+                    }
+                }
             }
         }
         _ => unreachable!("Exhausted list of subcommands and subcommand_required prevents `None`"),

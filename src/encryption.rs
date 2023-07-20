@@ -9,7 +9,7 @@ use std::time::Duration;
 
 const ENCRYPTION_KEYWORD: &str = "MUCLI_ENCRYPT";
 use crate::utils::{
-    config_interact::{filter_map_lines, key_exists, set_key},
+    config_interact::{filter_and_map_lines, key_exists, set_key},
     terminal::arrow_progress,
     GenericError,
 };
@@ -153,7 +153,7 @@ fn set_encryption_key() -> Result<(), EncryptionError> {
 
 fn encryption_keys() -> Result<Vec<Vec<u8>>, EncryptionError> {
     let mut filtered_lines =
-        filter_map_lines(ENCRYPTION_KEYWORD, |line| parse_encryption_key_line(line))?;
+        filter_and_map_lines(ENCRYPTION_KEYWORD, |line| parse_encryption_key_line(line))?;
 
     if filtered_lines.is_empty() {
         return Err(EncryptionError::NoKeyFound);
@@ -246,7 +246,7 @@ fn nth_encription_key(index: usize) -> Result<Vec<u8>, EncryptionError> {
 }
 
 fn latest_encryption_version() -> Result<u32, EncryptionError> {
-    let mut filtered_lines: Vec<u32> = filter_map_lines(ENCRYPTION_KEYWORD, |line| {
+    let mut filtered_lines: Vec<u32> = filter_and_map_lines(ENCRYPTION_KEYWORD, |line| {
         line.split('=')
             .nth(1)
             .unwrap()
