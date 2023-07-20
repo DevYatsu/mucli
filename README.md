@@ -6,7 +6,7 @@ mucli is a versatile command-line tool offering various functionalities, includi
 
 To use mucli, follow these steps:
 
-- [Download the latest](./releases/latest) release for your operating system.
+- [Download the latest](../releases/latest) release for your operating system.
 - Unzip the downloaded file to a preferred location on your machine.
 - Navigate to the unzipped folder in your terminal or command prompt.
 
@@ -84,6 +84,6 @@ mucli decrypt -s /path/to/source_file
 
 ## Feedback and Contributions
 
-We welcome your feedback and contributions to improve mucli. If you encounter any issues or have suggestions for new features, please feel free to open an [issue](./issues) on our GitHub repository.
+We welcome your feedback and contributions to improve mucli. If you encounter any issues or have suggestions for new features, please feel free to open an [issue](../issues) on our GitHub repository.
 
 Happy command-line multitasking with mucli!
