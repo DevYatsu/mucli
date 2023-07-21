@@ -2,12 +2,12 @@ const CONFIG_FILE: &str = "config.txt";
 
 use std::io::{Seek, SeekFrom, Write};
 
-use crate::{file, parse_config_line};
+use crate::{file_as_str, parse_config_line};
 
 use super::GenericError;
 
 pub fn set_key(new_line: String) -> Result<(), GenericError> {
-    let (mut file, buffer) = file!(CONFIG_FILE);
+    let (mut file, buffer) = file_as_str!(CONFIG_FILE);
 
     file.seek(SeekFrom::Start(0))?; // Move the cursor to the beginning of the file
 
@@ -23,7 +23,7 @@ pub fn set_key(new_line: String) -> Result<(), GenericError> {
 }
 
 pub fn replace_key(keyword: &str, new_line: String) -> Result<(), GenericError> {
-    let (mut file, buffer) = file!(CONFIG_FILE);
+    let (mut file, buffer) = file_as_str!(CONFIG_FILE);
 
     // Create a new buffer with modified lines
     let modified_buffer = buffer
@@ -46,7 +46,7 @@ pub fn replace_key(keyword: &str, new_line: String) -> Result<(), GenericError> 
 }
 
 pub fn get_keys(keyword: &str) -> Result<Vec<String>, GenericError> {
-    let (_, buffer) = file!(CONFIG_FILE);
+    let (_, buffer) = file_as_str!(CONFIG_FILE);
 
     Ok(buffer
         .lines()
@@ -56,7 +56,7 @@ pub fn get_keys(keyword: &str) -> Result<Vec<String>, GenericError> {
 }
 
 pub fn get_key(keyword: &str) -> Result<String, GenericError> {
-    let (_, buffer) = file!(CONFIG_FILE);
+    let (_, buffer) = file_as_str!(CONFIG_FILE);
 
     for line in buffer.lines() {
         if line.starts_with(&format!("{}{}", keyword, "=")) {
@@ -77,13 +77,13 @@ pub fn filter_map_lines<F, T>(f: F) -> Result<Vec<T>, GenericError>
 where
     F: FnMut(&str) -> Option<T>,
 {
-    let (_, buffer) = file!(CONFIG_FILE);
+    let (_, buffer) = file_as_str!(CONFIG_FILE);
 
     Ok(buffer.lines().filter_map(f).collect())
 }
 
 pub fn key_exists(keyword: &str) -> Result<bool, GenericError> {
-    let (_, buffer) = file!(CONFIG_FILE);
+    let (_, buffer) = file_as_str!(CONFIG_FILE);
 
     if buffer
         .lines()

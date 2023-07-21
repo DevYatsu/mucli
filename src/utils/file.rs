@@ -1,5 +1,5 @@
 #[macro_export]
-macro_rules! file {
+macro_rules! file_as_str {
     ($name: expr) => {{
         use std::io::Read;
 
@@ -15,6 +15,13 @@ macro_rules! file {
         (file, buffer)
     }};
 }
+#[macro_export]
+macro_rules! file_data {
+    ($file: expr) => {{
+        crate::encryption::get_file_data(&mut $file)
+    }};
+}
+
 #[macro_export]
 macro_rules! file_as_bytes {
     ($name: expr) => {{

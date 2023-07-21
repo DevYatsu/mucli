@@ -3,7 +3,7 @@ mod password;
 mod utils;
 
 use crate::{
-    encryption::{decrypt_file, encrypt_file},
+    encryption::{decrypt_file, encrypt_file, encrypt_file_x},
     password::add_password_recovery_question,
 };
 use clap::{arg, command, ArgAction, ArgGroup, Command};
@@ -12,8 +12,8 @@ use dialoguer::{
     Input, Password, Select,
 };
 use encryption::{
-    decrypted_file_path, encrypted_file_path, init_encryption_key, update_encryption_key,
-    update_file_encryption_key,
+    decrypt_file_entirely, decrypted_file_path, encrypted_file_path, init_encryption_key,
+    update_encryption_key, update_file_encryption_key, EncryptionError,
 };
 use password::{
     get_password, init_password_key, remove_password_recovery_question, retrieve_questions,
@@ -58,6 +58,8 @@ fn main() {
                 .arg(arg!(-'u' --"ukey" "Update encryption key or update encryption key of a file to the latest version").action(ArgAction::SetTrue))
                 .arg(arg!(-'c' --"cdir" "Place output file in current dir").action(ArgAction::SetTrue))
                 .arg(arg!(-'s' --"sfile" "Select target file as output file").action(ArgAction::SetTrue))
+                .arg(arg!(-'p' --"purge" "Get rid of all the encryption keys to start anew").action(ArgAction::SetTrue))
+                .arg(arg!(-'t' --"times" <TIMES> "Encrypt x times the file").action(ArgAction::Set).value_parser(clap::value_parser!(u8)))
                 .arg(arg!([FILEPATH] "file path of the target file").required_unless_present_all(["ukey"]).value_parser(clap::value_parser!(PathBuf)))
                 .arg(arg!([OUTPUTDIR] "output directory [defaults: file dir]").value_parser(clap::value_parser!(PathBuf))),
         )
@@ -71,6 +73,7 @@ fn main() {
                 )
                 .arg(arg!(-'c' --"cdir" "Place output file in current dir").action(ArgAction::SetTrue))
                 .arg(arg!(-'s' --"sfile" "Select target file as output file").action(ArgAction::SetTrue))
+                .arg(arg!(-'e' --"entirely" "Entirely decrypt target file").action(ArgAction::SetTrue))
                 .arg(arg!([FILEPATH] "file path of the target file").required(true).value_parser(clap::value_parser!(PathBuf)))
                 .arg(arg!([OUTPUTDIR] "output directory [defaults: file dir]").value_parser(clap::value_parser!(PathBuf))),
         )
@@ -78,34 +81,65 @@ fn main() {
 
     match matches.subcommand() {
         Some(("encrypt", sub_matches)) => {
+            if let Err(_) = init_encryption_key() {
+                // initialize encryption key if 1st time using command
+                print_err!("Error initializing encryption key!");
+                return;
+            }
             if let Some(filepath) = sub_matches.get_one::<PathBuf>("FILEPATH") {
-                if let Err(_) = init_encryption_key() {
-                    // initialize encryption key if 1st time using command
-                    print_err!("Initializing encryption key failed!");
-                    return;
-                }
                 let file_path: &Path = Path::new(filepath);
                 if file_path.exists() {
                     if let true = sub_matches.get_flag("sfile") {
-                        match encrypt_file(&file_path.to_path_buf(), &file_path.to_path_buf()) {
-                            Ok(_) => {
-                                print_success!(
-                                    "{:?} content replaced with crypted one!",
-                                    &file_path
-                                )
-                            }
-                            Err(_) => print_err!("Failed to encrypt file"),
-                        };
+                        if let Some(times) = sub_matches.get_one::<u8>("times") {
+                            match encrypt_file_x(file_path, file_path, *times) {
+                                Ok(pb) => {
+                                    pb.finish_and_clear();
+                                    print_success!(
+                                        "{:?} content was encrypted {} times successfully",
+                                        &file_path,
+                                        times
+                                    );
+                                }
+                                Err(_) => print_err!("Failed to encrypt file"),
+                            };
+                        } else {
+                            match encrypt_file(&file_path.to_path_buf(), &file_path.to_path_buf()) {
+                                Ok(_) => {
+                                    print_success!(
+                                        "{:?} content replaced with crypted one!",
+                                        &file_path
+                                    )
+                                }
+                                Err(_) => print_err!("Failed to encrypt file"),
+                            };
+                        }
                     } else if let true = sub_matches.get_flag("cdir") {
                         match current_dir() {
                             Ok(current_dir) => {
                                 let output_path = encrypted_file_path(&file_path, &current_dir);
-                                match encrypt_file(&file_path.to_path_buf(), &output_path) {
-                                    Ok(_) => {
-                                        print_success!("Encrypted file saved as {:?}!", output_path)
-                                    }
-                                    Err(_) => print_err!("Failed to encrypt file"),
-                                };
+                                if let Some(times) = sub_matches.get_one::<u8>("times") {
+                                    match encrypt_file_x(&file_path, &output_path, *times) {
+                                        Ok(pb) => {
+                                            pb.finish_and_clear();
+                                            print_success!(
+                                                "File encrypted {} times and saved as {:?}",
+                                                times,
+                                                output_path
+                                            );
+                                        }
+                                        Err(_) => print_err!("Failed to encrypt file"),
+                                    };
+                                } else {
+                                    match encrypt_file(&file_path.to_path_buf(), &output_path) {
+                                        Ok(_) => {
+                                            print_success!(
+                                                "Encrypted file saved as {:?}!",
+                                                output_path
+                                            )
+                                        }
+                                        Err(_) => print_err!("Failed to encrypt file"),
+                                    };
+                                }
                             }
                             Err(error) => {
                                 print_err!("Failed to get current directory: {}", error)
@@ -117,18 +151,38 @@ fn main() {
                                 "{} updated without issue",
                                 file_path.file_name().unwrap().to_string_lossy().to_string()
                             ),
+                            Err(EncryptionError::CannotUpdateLatest) => {
+                                print_err!("{}", EncryptionError::CannotUpdateLatest.to_string())
+                            }
                             Err(e) => print_err!("Key updating failed: {}", e),
                         }
                     } else if let Some(output_dir) = sub_matches.get_one::<PathBuf>("OUTPUTDIR") {
                         match Path::new(output_dir).is_dir() {
                             true => {
                                 let output_path = encrypted_file_path(&file_path, &output_dir);
-                                match encrypt_file(&file_path.to_path_buf(), &output_path) {
-                                    Ok(_) => {
-                                        print_success!("Encrypted file saved as {:?}!", output_path)
-                                    }
-                                    Err(_) => print_err!("Failed to encrypt file"),
-                                };
+                                if let Some(times) = sub_matches.get_one::<u8>("times") {
+                                    match encrypt_file_x(&file_path, &output_path, *times) {
+                                        Ok(pb) => {
+                                            pb.finish_and_clear();
+                                            print_success!(
+                                                "File encrypted {} times and saved as {:?}",
+                                                times,
+                                                output_path
+                                            );
+                                        }
+                                        Err(_) => print_err!("Failed to encrypt file"),
+                                    };
+                                } else {
+                                    match encrypt_file(&file_path.to_path_buf(), &output_path) {
+                                        Ok(_) => {
+                                            print_success!(
+                                                "Encrypted file saved as {:?}!",
+                                                output_path
+                                            )
+                                        }
+                                        Err(_) => print_err!("Failed to encrypt file"),
+                                    };
+                                }
                             }
                             false => print_err!("Failed to get {:?} directory", output_dir),
                         }
@@ -169,25 +223,54 @@ fn main() {
                 let file_path: &Path = Path::new(filepath);
                 if file_path.exists() {
                     if let true = sub_matches.get_flag("sfile") {
-                        match decrypt_file(&file_path.to_path_buf(), &file_path.to_path_buf()) {
-                            Ok(_) => {
-                                print_success!(
-                                    "{:?} content replaced with decrypted one!",
-                                    &file_path
-                                )
-                            }
-                            Err(_) => print_err!("Failed to encrypt file"),
-                        };
+                        if let true = sub_matches.get_flag("entirely") {
+                            match decrypt_file_entirely(&file_path, &file_path) {
+                                Ok(pb) => {
+                                    pb.finish_and_clear();
+                                    print_success!(
+                                        "{:?} content was entirely decrypted successfully",
+                                        &file_path
+                                    );
+                                }
+                                Err(_) => print_err!("Failed to decrypt file"),
+                            };
+                        } else {
+                            match decrypt_file(&file_path.to_path_buf(), &file_path.to_path_buf()) {
+                                Ok(_) => {
+                                    print_success!(
+                                        "{:?} content replaced with decrypted one!",
+                                        &file_path
+                                    )
+                                }
+                                Err(_) => print_err!("Failed to decrypt file"),
+                            };
+                        }
                     } else if let true = sub_matches.get_flag("cdir") {
                         match current_dir() {
                             Ok(current_dir) => {
                                 let output_path = decrypted_file_path(&file_path, &current_dir);
-                                match decrypt_file(&file_path.to_path_buf(), &output_path) {
-                                    Ok(_) => {
-                                        print_success!("Decrypted file saved as {:?}!", output_path)
-                                    }
-                                    Err(e) => print_err!("{}", e),
-                                };
+                                if let true = sub_matches.get_flag("entirely") {
+                                    match decrypt_file_entirely(&file_path, &output_path) {
+                                        Ok(pb) => {
+                                            pb.finish_and_clear();
+                                            print_success!(
+                                                "File was entirely decrypted  as {:?}",
+                                                output_path
+                                            );
+                                        }
+                                        Err(e) => print_err!("Failed to decrypt file: {}", e),
+                                    };
+                                } else {
+                                    match decrypt_file(&file_path.to_path_buf(), &output_path) {
+                                        Ok(_) => {
+                                            print_success!(
+                                                "Decrypted file saved as {:?}!",
+                                                output_path
+                                            )
+                                        }
+                                        Err(e) => print_err!("Failed to decrypt file: {}", e),
+                                    };
+                                }
                             }
                             Err(error) => {
                                 print_err!("Failed to get current directory: {}", error)
@@ -197,12 +280,28 @@ fn main() {
                         match Path::new(output_dir).is_dir() {
                             true => {
                                 let output_path = decrypted_file_path(&file_path, &output_dir);
-                                match decrypt_file(&file_path.to_path_buf(), &output_path) {
-                                    Ok(_) => {
-                                        print_success!("Decrypted file saved as {:?}!", output_path)
-                                    }
-                                    Err(e) => print_err!("{}", e),
-                                };
+                                if let true = sub_matches.get_flag("entirely") {
+                                    match decrypt_file_entirely(&file_path, &output_path) {
+                                        Ok(pb) => {
+                                            pb.finish_and_clear();
+                                            print_success!(
+                                                "File was entirely decrypted  as {:?}",
+                                                output_path
+                                            );
+                                        }
+                                        Err(e) => print_err!("Failed to decrypt file: {}", e),
+                                    };
+                                } else {
+                                    match decrypt_file(&file_path.to_path_buf(), &output_path) {
+                                        Ok(_) => {
+                                            print_success!(
+                                                "Decrypted file saved as {:?}!",
+                                                output_path
+                                            )
+                                        }
+                                        Err(e) => print_err!("Failed to decrypt file: {}", e),
+                                    };
+                                }
                             }
                             false => print_err!("Failed to get {:?} directory", output_dir),
                         }
@@ -210,12 +309,28 @@ fn main() {
                         match file_path.parent() {
                             Some(parent_dir) => {
                                 let output_path = decrypted_file_path(&file_path, &parent_dir);
-                                match decrypt_file(&file_path.to_path_buf(), &output_path) {
-                                    Ok(_) => {
-                                        print_success!("Decrypted file saved as {:?}!", output_path)
-                                    }
-                                    Err(e) => print_err!("{}", e),
-                                };
+                                if let true = sub_matches.get_flag("entirely") {
+                                    match decrypt_file_entirely(&file_path, &output_path) {
+                                        Ok(pb) => {
+                                            pb.finish_and_clear();
+                                            print_success!(
+                                                "File was entirely decrypted  as {:?}",
+                                                output_path
+                                            );
+                                        }
+                                        Err(e) => print_err!("Failed to decrypt file: {}", e),
+                                    };
+                                } else {
+                                    match decrypt_file(&file_path.to_path_buf(), &output_path) {
+                                        Ok(_) => {
+                                            print_success!(
+                                                "Decrypted file saved as {:?}!",
+                                                output_path
+                                            )
+                                        }
+                                        Err(e) => print_err!("Failed to decrypt file: {}", e),
+                                    };
+                                }
                             }
                             None => print_err!("Failed to get target file parent directory"),
                         }
@@ -505,7 +620,7 @@ fn main() {
                                 };
                                 if answered_questions.len() == 3 {
                                     print_success!(
-                                        "that's 3 right answers! Change your password now!"
+                                        "That's 3 right answers! Change your password now!"
                                     );
                                     break;
                                 }

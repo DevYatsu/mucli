@@ -22,8 +22,8 @@ pub fn arrow_progress(steps: u64) -> ProgressBar {
 
 #[macro_export]
 macro_rules! print_err {
-    ($fmt:literal) => (println!("\x1B[38;5;196merror\x1B[0m: {}", $fmt));
-    ($fmt:literal, $($arg:expr),*) => (println!("\x1B[38;5;196merror\x1B[0m: {}", format_args!($fmt, $($arg),*)));
+    ($fmt:literal) => (println!("\x1B[1;31merror\x1B[0m: {}", $fmt));
+    ($fmt:literal, $($arg:expr),*) => (println!("\x1B[1;31merror\x1B[0m: {}", format_args!($fmt, $($arg),*)));
 }
 #[macro_export]
 macro_rules! print_solution {

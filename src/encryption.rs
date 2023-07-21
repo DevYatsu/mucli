@@ -1,4 +1,5 @@
-use crate::{config_line, file_as_bytes, parse_config_line};
+use crate::{config_line, file_as_bytes, file_data, parse_config_line};
+use indicatif::ProgressBar;
 use rand::RngCore;
 use simplecrypt::{decrypt, encrypt, DecryptionError};
 use std::fs::File;
@@ -32,10 +33,11 @@ custom_error! {pub EncryptionError
     CannotAccessFile{filename: String} = "Cannot access file \"{filename}\"",
     InvalidFileContent = "Target file must be a crypted file",
     DecryptNotCryptedFile = "Cannot decrypt a non-encrypted file",
-    KeyUpdateFailed = "Impossible to update encryption key"
+    KeyUpdateFailed = "Impossible to update encryption key",
+    CannotUpdateLatest = "File is already at the latest encryption version"
 }
 
-struct FileHeader {
+pub struct FileHeader {
     encryption_layer: u32,
     encryption_version: u32,
 }
@@ -125,6 +127,55 @@ pub fn decrypt_file(input_path: &PathBuf, output_path: &PathBuf) -> Result<(), E
     output_file.write_all(&decrypted_content)?;
 
     Ok(())
+}
+
+pub fn encrypt_file_x(
+    input_path: &Path,
+    output_path: &Path,
+    times: u8,
+) -> Result<ProgressBar, EncryptionError> {
+    let mut counter = 0;
+    let progress = arrow_progress(times as u64);
+    progress.set_prefix("Encrypting file...");
+
+    loop {
+        encrypt_file(&input_path.to_path_buf(), &output_path.to_path_buf())?;
+        progress.inc(1);
+        counter += 1;
+
+        if counter == times {
+            progress.finish_and_clear();
+            break;
+        }
+    }
+
+    progress.finish_with_message("File encrypted!");
+    Ok(progress)
+}
+
+pub fn decrypt_file_entirely(
+    input_path: &Path,
+    output_path: &Path,
+) -> Result<ProgressBar, EncryptionError> {
+    let (mut file, _) = file_as_bytes!(input_path);
+    let times = file_data!(&mut file)?.encryption_layer;
+
+    let mut counter = 0;
+    let progress = arrow_progress(times as u64);
+    progress.set_prefix("Decrypting file...");
+
+    loop {
+        decrypt_file(&input_path.to_path_buf(), &output_path.to_path_buf())?;
+        progress.inc(1);
+        counter += 1;
+
+        if counter == times {
+            break;
+        }
+    }
+
+    progress.finish_with_message("File decrypted!");
+    Ok(progress)
 }
 
 pub fn generate_encryption_key(length: usize) -> Vec<u8> {
@@ -218,26 +269,21 @@ pub fn update_encryption_key() -> Result<(), EncryptionError> {
 pub fn update_file_encryption_key(filepath: &PathBuf) -> Result<(), EncryptionError> {
     let mut file = File::open(filepath)?;
     let initial_layer = get_file_data(&mut file)?.encryption_layer;
-    let pb = arrow_progress((initial_layer * 2) as u64);
-    pb.set_prefix("Generating key...");
+    if file_data!(file)?.encryption_version == latest_encryption_version()? {
+        return Err(EncryptionError::CannotUpdateLatest);
+    }
 
     // first we decrypt the file
-    while let Ok(_) = get_file_data(&mut file) {
-        decrypt_file(filepath, filepath)?;
-        pb.inc(1);
-    }
+    let progress_decrypt: ProgressBar = decrypt_file_entirely(filepath, filepath)?;
+    thread::sleep(Duration::from_millis(250));
+    progress_decrypt.finish_and_clear();
 
     // we encrypt it again with newly generated key
-    let mut layer = 0;
-    while layer < initial_layer {
-        encrypt_file(filepath, filepath)?;
-        layer += 1;
-        pb.inc(1);
-    }
+    let progress_encrypt: ProgressBar = encrypt_file_x(filepath, filepath, initial_layer as u8)?;
 
-    pb.finish_with_message("===> Key updated");
-    thread::sleep(Duration::from_millis(500));
-    pb.finish_and_clear();
+    thread::sleep(Duration::from_millis(250));
+    progress_encrypt.finish_and_clear();
+
     Ok(())
 }
 
@@ -290,7 +336,7 @@ fn set_file_data(data: &mut Vec<u8>, file_header: FileHeader) -> Result<(), Encr
     Ok(())
 }
 
-fn get_file_data(file: &mut File) -> Result<FileHeader, EncryptionError> {
+pub fn get_file_data(file: &mut File) -> Result<FileHeader, EncryptionError> {
     let mut header_marker = [0u8; HEADER_SIZE];
     let mut version_bytes = [0u8; VERSION_SIZE];
     let mut layer_bytes = [0u8; LAYER_SIZE];
