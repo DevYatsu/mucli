@@ -237,7 +237,7 @@ fn main() {
                 match get_password() {
                     Ok(_) => {
                         print_err!("Password is already set");
-                        print_success!("Use \"password --change\" to modify it");
+                        print_solution!("Use \"password --change\" to modify it");
                     }
                     Err(_) => {
                         let password: String =
@@ -316,7 +316,7 @@ fn main() {
                     }
                     Err(_) => {
                         print_err!("Password has not been set yet");
-                        print_success!("Use \"password --init\" to set it");
+                        print_solution!("Use \"password --init\" to set it");
                         return;
                     }
                 }
@@ -437,7 +437,7 @@ fn main() {
                     }
                     Err(_) => {
                         print_err!("Password has not been set yet");
-                        print_success!("Use \"password --init\" to set it");
+                        print_solution!("Use \"password --init\" to set it");
                         return;
                     }
                 }
@@ -447,7 +447,7 @@ fn main() {
                         Ok(mut questions) => {
                             if questions.len() < 3 {
                                 print_err!("Not enough questions were set");
-                                print_warning!("3 questions are needed to reset password");
+                                print_solution!("3 questions are needed to reset password");
                                 return;
                             }
                             questions.push("Cancel".to_string());
@@ -530,13 +530,14 @@ fn main() {
                             };
                         }
                         Err(_) => {
-                            print_err!("No question set");
+                            print_err!("No password recovery question set");
+                            print_solution!("Use \"password -m\" to set questions");
                             return;
                         }
                     },
                     Err(_) => {
                         print_err!("Password has not been set yet");
-                        print_success!("Use \"password --init\" to set it");
+                        print_solution!("Use \"password --init\" to set it");
                         return;
                     }
                 }

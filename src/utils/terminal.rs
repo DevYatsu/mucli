@@ -26,9 +26,9 @@ macro_rules! print_err {
     ($fmt:literal, $($arg:expr),*) => (println!("\x1B[38;5;196merror\x1B[0m: {}", format_args!($fmt, $($arg),*)));
 }
 #[macro_export]
-macro_rules! print_warning {
-    ($fmt:literal) => (println!("\x1B[38;5;227mwarning\x1B[0m: {}", $fmt));
-    ($fmt:literal, $($arg:expr),*) => (println!("\x1B[38;5;227mwarning\x1B[0m: {}", format_args!($fmt, $($arg),*)));
+macro_rules! print_solution {
+    ($fmt:literal) => (println!("\x1B[38;5;227msolution\x1B[0m: {}", $fmt));
+    ($fmt:literal, $($arg:expr),*) => (println!("\x1B[38;5;227msolution\x1B[0m: {}", format_args!($fmt, $($arg),*)));
 }
 #[macro_export]
 macro_rules! print_success {
