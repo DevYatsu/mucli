@@ -16,17 +16,9 @@ mucli supports several commands and options to cater to your needs. Here are the
 
 ### Set Password
 
-Command to set a security password to access sensitive information.
+Command to set a security password to access sensitive data.
 
 `mucli password --flag`
-
-#### Flags (one required)
-
-- `-i, --init`: Set a password for the first time.
-- `-c, --change`: Change the existing password.
-- `-r, --reset` (future release): Reset the password.
-
-#### Password command example usage
 
 ```bash
 # Set a password for the first time
@@ -34,55 +26,55 @@ mucli password -i [optional new_password]
 
 # Change the existing password
 mucli password --change [optional current_password]
+
+# Reset the password by answering a set of questions (future release)
+mucli password --reset
+
+# Add and remove questions you will have to answer to reset your password
+mucli password --modifyQ [optional current_password]
 ```
 
 ### Encrypt
 
 Command to encrypt a specified file and place the output file in the specified directory.
 
-`mucli encrypt [options] [file_path] [output_dir]`
-
-#### Flags (not required)
-
-- `-u, --ukey`: Update encryption key or update the encryption key of a file to the latest version.
-- `-c, --cdir`: Place the output file in the current directory.
-- `-s, --sfile`: Select the target file as the output file.
-
-#### Encrypt command example usage
-
 ```bash
+# Encrypt the file and place the output in the specified directory
+mucli encrypt /path/to/source_file /path/to/output_dir
+
 # Encrypt the file and place the output in the current directory
 mucli encrypt -c /path/to/source_file
 
-# Update encryption key of the file
+# Update the encryption key of the file
 mucli encrypt -u /path/to/source_file
 
 # Update encryption key version
 mucli encrypt -u
 
-# Replace file by its encrypted version
+# Replace the file by its encrypted version
 mucli encrypt -s /path/to/source_file
+
+# Encrypt the file 5 times
+mucli encrypt -t 5 /path/to/source_file
 ```
 
 ### Decrypt
 
 Command to decrypt a specified file and place the output file in the specified directory.
 
-`mucli decrypt [options] [file_path] [output_dir]`
-
-#### Flags (not required)
-
-- `-c, --cdir`: Place the output file in the current directory.
-- `-s, --sfile`: Select the target file as the output file.
-
-#### Decrypt command example usage
-
 ```bash
-# Encrypt the file and place the output in the current directory
-mucli decrypt -c /path/to/source_file
+# Decrypt the file and place the output in the specified directory
+mucli decrypt /path/to/encrypted_file /path/to/output_dir
 
-# Replace file by its encrypted version
-mucli decrypt -s /path/to/source_file
+# Decrypt the file and place the output in the current directory
+mucli decrypt -c /path/to/encrypted_file
+
+# Replace the file by its decrypted version
+mucli decrypt -s /path/to/encrypted_file
+
+# Decrypt the target file until it's totally decrypted,
+# useful when crypted several times
+mucli decrypt -e /path/to/encrypted_file
 ```
 
 ## Feedback and Contributions

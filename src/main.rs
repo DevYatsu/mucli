@@ -82,7 +82,10 @@ fn main() {
                 .arg(arg!([FILEPATH] "file path of the target file").required(true).value_parser(clap::value_parser!(PathBuf)))
                 .arg(arg!([OUTPUTDIR] "output directory [defaults: file dir]").value_parser(clap::value_parser!(PathBuf))),
         )
-        .get_matches();
+        .subcommand(
+            Command::new("update")
+                .about("Check if a new update of mucli is available.")
+        ).get_matches();
 
     match matches.subcommand() {
         Some(("encrypt", sub_matches)) => {
@@ -670,6 +673,9 @@ fn main() {
                     }
                 }
             }
+        }
+        Some(("update", _)) => {
+            
         }
         _ => unreachable!("Exhausted list of subcommands and subcommand_required prevents `None`"),
     }
