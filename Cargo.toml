@@ -3,8 +3,8 @@ name = "mucli"
 version = "0.1.0"
 authors = ["DevYatsu"]
 description = "A multi-purposes client line interface: mucli!"
-edition = "2021"
 license = "MIT"
+edition = "2021"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
@@ -14,8 +14,6 @@ custom_error = "1.9.2"
 dialoguer = "0.10.4"
 indicatif = "0.17.5"
 rand = "0.8.5"
+reqwest = "0.11.18"
 simplecrypt = "1.0.2"
-
-[[bin]]
-name = "mucli"  # The name of the binary executable (without file extension)
-path = "src/main.rs"  # The path to the main file (entry point) for your CLI
+tokio = { version = "1.29.1", features = ["full"] } 

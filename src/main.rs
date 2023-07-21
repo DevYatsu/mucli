@@ -1,15 +1,17 @@
 mod encryption;
 mod password;
+mod update;
 mod utils;
 
 use crate::{
     encryption::{decrypt_file, encrypt_file, encrypt_file_x, purge_encryption_keys},
     password::add_password_recovery_question,
+    update::can_update,
 };
 use clap::{arg, command, ArgAction, ArgGroup, Command};
 use dialoguer::{
     theme::{self, ColorfulTheme},
-    Input, Password, Select,
+    Confirm, Input, Password, Select,
 };
 use encryption::{
     decrypt_file_entirely, decrypted_file_path, encrypted_file_path, init_encryption_key,
@@ -23,13 +25,17 @@ use std::{
     env::current_dir,
     path::{Path, PathBuf},
 };
+use update::get_latest_release_version;
 use utils::config_interact::filter_map_lines;
 
-fn main() {
+const VERSION: &str = "1.0.0";
+
+#[tokio::main]
+async fn main() {
     let matches = command!()
         .author("yatsu")
         .name("mucli")
-        .version("0.1.0")
+        .version(VERSION)
         .about("A multi-purposes client line interface: mucli!")
         .propagate_version(true)
         .subcommand_required(true)
@@ -84,7 +90,7 @@ fn main() {
         )
         .subcommand(
             Command::new("update")
-                .about("Check if a new update of mucli is available.")
+                .about("Checks if a new update of mucli is available")
         ).get_matches();
 
     match matches.subcommand() {
@@ -675,7 +681,24 @@ fn main() {
             }
         }
         Some(("update", _)) => {
-            
+            match get_latest_release_version().await {
+                Ok(v) => {
+                    print_success!("Latest release version is \"{}\"", v);
+                    if can_update(VERSION, &v) {
+                        print_success!("This version is superior to current version \"{}\"", v);
+                        let confirmation = Confirm::with_theme(&ColorfulTheme::default())
+                            .with_prompt("Would you like to upgrade to the latest version?")
+                            .interact()
+                            .unwrap();
+
+                        if !confirmation {
+                            return;
+                        }
+                        //update version
+                    }
+                }
+                Err(e) => print_err!("{}", e),
+            };
         }
         _ => unreachable!("Exhausted list of subcommands and subcommand_required prevents `None`"),
     }
