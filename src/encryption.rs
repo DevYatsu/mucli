@@ -1,4 +1,4 @@
-use crate::{config_line, file_as_bytes, file_data, parse_config_line};
+use crate::{config_line, file_as_bytes, file_truncate, file_data, parse_config_line};
 use indicatif::ProgressBar;
 use rand::RngCore;
 use simplecrypt::{decrypt, encrypt, DecryptionError};
@@ -9,10 +9,11 @@ use std::thread;
 use std::time::Duration;
 
 const ENCRYPTION_KEYWORD: &str = "MUCLI_ENCRYPT";
+const CONFIG_FILE: &str = "config.txt";
 use crate::utils::{
     config_interact::{filter_map_lines, key_exists, set_key, vec_as_string},
     terminal::arrow_progress,
-    GenericError,
+    GenericError
 };
 
 extern crate custom_error;
@@ -252,7 +253,7 @@ pub fn init_encryption_key() -> Result<(), EncryptionError> {
     }
 }
 
-pub fn update_encryption_key() -> Result<(), EncryptionError> {
+pub fn init_new_encryption_key() -> Result<(), EncryptionError> {
     match key_exists(ENCRYPTION_KEYWORD) {
         Ok(val) => {
             if let true = val {
@@ -267,8 +268,10 @@ pub fn update_encryption_key() -> Result<(), EncryptionError> {
 }
 
 pub fn update_file_encryption_key(filepath: &PathBuf) -> Result<(), EncryptionError> {
+    //update file key to latest
     let mut file = File::open(filepath)?;
     let initial_layer = get_file_data(&mut file)?.encryption_layer;
+
     if file_data!(file)?.encryption_version == latest_encryption_version()? {
         return Err(EncryptionError::CannotUpdateLatest);
     }
@@ -284,6 +287,20 @@ pub fn update_file_encryption_key(filepath: &PathBuf) -> Result<(), EncryptionEr
     thread::sleep(Duration::from_millis(250));
     progress_encrypt.finish_and_clear();
 
+    Ok(())
+}
+
+pub fn purge_encryption_keys() -> Result<(), EncryptionError> {
+    let (mut file, _) = file_truncate!(CONFIG_FILE);
+    
+    let filtered_content = filter_map_lines(|line| {
+        if !line.starts_with(&format!("{}=", ENCRYPTION_KEYWORD)) {
+            return Some(line.to_string())
+        }
+        None
+    })?.join("\n");
+
+    file.write_all(filtered_content.as_bytes())?;
     Ok(())
 }
 

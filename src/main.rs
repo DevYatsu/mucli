@@ -3,7 +3,7 @@ mod password;
 mod utils;
 
 use crate::{
-    encryption::{decrypt_file, encrypt_file, encrypt_file_x},
+    encryption::{decrypt_file, encrypt_file, encrypt_file_x, purge_encryption_keys},
     password::add_password_recovery_question,
 };
 use clap::{arg, command, ArgAction, ArgGroup, Command};
@@ -13,7 +13,7 @@ use dialoguer::{
 };
 use encryption::{
     decrypt_file_entirely, decrypted_file_path, encrypted_file_path, init_encryption_key,
-    update_encryption_key, update_file_encryption_key, EncryptionError,
+    init_new_encryption_key, update_file_encryption_key, EncryptionError,
 };
 use password::{
     get_password, init_password_key, remove_password_recovery_question, retrieve_questions,
@@ -53,14 +53,14 @@ fn main() {
                 .group(
                     ArgGroup::new("encrypt_actions")
                         .required(false)
-                        .args(["ukey", "cdir", "sfile"]),
+                        .args(["ukey", "cdir", "sfile", "purge"]),
                 )
                 .arg(arg!(-'u' --"ukey" "Update encryption key or update encryption key of a file to the latest version").action(ArgAction::SetTrue))
                 .arg(arg!(-'c' --"cdir" "Place output file in current dir").action(ArgAction::SetTrue))
                 .arg(arg!(-'s' --"sfile" "Select target file as output file").action(ArgAction::SetTrue))
                 .arg(arg!(-'p' --"purge" "Get rid of all the encryption keys to start anew").action(ArgAction::SetTrue))
                 .arg(arg!(-'t' --"times" <TIMES> "Encrypt x times the file").action(ArgAction::Set).value_parser(clap::value_parser!(u8)))
-                .arg(arg!([FILEPATH] "file path of the target file").required_unless_present_all(["ukey"]).value_parser(clap::value_parser!(PathBuf)))
+                .arg(arg!([FILEPATH] "file path of the target file").required_unless_present_any(["ukey", "purge"]).value_parser(clap::value_parser!(PathBuf)))
                 .arg(arg!([OUTPUTDIR] "output directory [defaults: file dir]").value_parser(clap::value_parser!(PathBuf))),
         )
         .subcommand(
@@ -206,11 +206,19 @@ fn main() {
                     return;
                 }
             } else if let true = sub_matches.get_flag("ukey") {
-                if let Err(_) = update_encryption_key() {
+                if let Err(_) = init_new_encryption_key() {
                     // initialize encryption key if 1st time using command
                     print_err!("Error updating encryption key!");
                     return;
                 }
+                print_success!("Encryption keys updated successfully")
+            } else if let true = sub_matches.get_flag("purge") {
+                if let Err(_) = purge_encryption_keys() {
+                    // initialize encryption key if 1st time using command
+                    print_err!("Error purging encryption keys!");
+                    return;
+                }
+                print_success!("Encryption keys purged successfully!")
             }
         }
         Some(("decrypt", sub_matches)) => {
