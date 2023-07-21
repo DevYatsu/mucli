@@ -28,7 +28,7 @@ use std::{
 use update::get_latest_release_version;
 use utils::config_interact::filter_map_lines;
 
-const VERSION: &str = "1.0.0";
+const VERSION: &str = "v1.0.0";
 
 #[tokio::main]
 async fn main() {
@@ -55,7 +55,7 @@ async fn main() {
         )
         .subcommand(
             Command::new("encrypt")
-                .about("Encrypts the specified file and place the output file in specified dir")
+                .about("Encrypt the specified file and place the output file in specified dir")
                 .groups(
                     [
                     ArgGroup::new("encrypt_actions")
@@ -76,7 +76,7 @@ async fn main() {
         )
         .subcommand(
             Command::new("decrypt")
-                .about("Decrypts the specified file and place the output file in specified dir")
+                .about("Decrypt the specified file and place the output file in specified dir")
                 .group(
                     ArgGroup::new("decrypt_actions")
                         .required(false)
@@ -90,7 +90,7 @@ async fn main() {
         )
         .subcommand(
             Command::new("update")
-                .about("Checks if a new update of mucli is available")
+                .about("Check if a new update of mucli is available (coming soon)")
         ).get_matches();
 
     match matches.subcommand() {
@@ -681,6 +681,8 @@ async fn main() {
             }
         }
         Some(("update", _)) => {
+            print_future_update!("Command coming soon!");
+            return;
             match get_latest_release_version().await {
                 Ok(v) => {
                     print_success!("Latest release version is \"{}\"", v);
