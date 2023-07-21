@@ -9,10 +9,10 @@ use std::num::ParseIntError;
 use simplecrypt::{decrypt, encrypt, DecryptionError};
 
 use crate::encryption::{generate_encryption_key, EncryptionError};
-use crate::file_truncate;
-use crate::utils::config_interact::{filter_map_lines, get_keys};
+use crate::utils::config_interact::vec_as_string;
+use crate::{file_truncate, config_line};
 use crate::utils::{
-    config_interact::{get_key, key_exists, replace_key, set_key, string_as_key},
+    config_interact::{get_key, key_exists, replace_key, set_key, string_as_vec, filter_map_lines, get_keys},
     GenericError,
 };
 
@@ -32,7 +32,7 @@ custom_error! {pub PasswordError
 }
 
 pub fn set_password(password: &str) -> Result<(), PasswordError> {
-    let line = format!("{}={:?}", PASSWORD_KEYWORD, encrypt_password(password)?);
+    let line = config_line!(PASSWORD_KEYWORD, vec_as_string(encrypt_password(password)?));
     replace_key(PASSWORD_KEYWORD, line)?;
     Ok(())
 }
@@ -46,19 +46,19 @@ pub fn get_password() -> Result<String, PasswordError> {
         .into());
     }
 
-    let crypted_password: Vec<u8> = string_as_key::<u8>(&get_key(PASSWORD_KEYWORD)?)?;
+    let crypted_password: Vec<u8> = string_as_vec::<u8>(&get_key(PASSWORD_KEYWORD)?)?;
 
     Ok(decrypt_password(crypted_password)?)
 }
 
 fn encrypt_password(password: &str) -> Result<Vec<u8>, PasswordError> {
-    let key = string_as_key::<u8>(&get_key(PASSWORD_KEY_KEYWORD)?)?;
+    let key = string_as_vec::<u8>(&get_key(PASSWORD_KEY_KEYWORD)?)?;
 
     let encrypted = encrypt(password.as_bytes(), &key);
     Ok(encrypted)
 }
 pub fn decrypt_password(crypted_value: Vec<u8>) -> Result<String, PasswordError> {
-    let key: Vec<u8> = string_as_key::<u8>(&get_key(PASSWORD_KEY_KEYWORD)?)?;
+    let key: Vec<u8> = string_as_vec::<u8>(&get_key(PASSWORD_KEY_KEYWORD)?)?;
 
     let decrypted = decrypt(&crypted_value, &key)?;
 
@@ -67,21 +67,21 @@ pub fn decrypt_password(crypted_value: Vec<u8>) -> Result<String, PasswordError>
 
 pub fn init_password_key() -> Result<(), PasswordError> {
     if !key_exists(PASSWORD_KEY_KEYWORD)? {
-        let new_line = format!("{}={:?}", PASSWORD_KEY_KEYWORD, generate_encryption_key(32));
+        let new_line = config_line!(PASSWORD_KEY_KEYWORD, vec_as_string(generate_encryption_key(32)));
         set_key(new_line)?
     }
     Ok(())
 }
 
 pub fn add_password_recovery_question(question: &str, answer: &str) -> Result<(), PasswordError> {
-    let line: String = format!("{}={}={}", QUESTION_KEYWORD, question, answer);
+    let line: String = config_line!(QUESTION_KEYWORD, question, answer);
     set_key(line)?;
     Ok(())
 }
 pub fn remove_password_recovery_question(index: usize) -> Result<(), PasswordError> {
     let questions: Vec<String> = retrieve_questions()?;
 
-    let formatted_str = format!("{}={}=", QUESTION_KEYWORD, questions[index]);
+    let formatted_str = format!("{}=", config_line!(QUESTION_KEYWORD, questions[index]));
 
     let lines: Vec<String> = filter_map_lines(|q| {
         if !q.starts_with(&formatted_str) {

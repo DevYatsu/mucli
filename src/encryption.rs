@@ -1,4 +1,5 @@
-use crate::file_as_bytes;
+use crate::utils::config_interact::vec_as_string;
+use crate::{file_as_bytes, config_line};
 use rand::RngCore;
 use simplecrypt::{decrypt, encrypt, DecryptionError};
 use std::fs::File;
@@ -139,12 +140,7 @@ fn set_encryption_key() -> Result<(), EncryptionError> {
         Err(_) => 0,
     };
 
-    let new_line = format!(
-        "{}={}={:?}",
-        ENCRYPTION_KEYWORD,
-        version,
-        generate_encryption_key(32)
-    );
+    let new_line = config_line!(ENCRYPTION_KEYWORD, version, vec_as_string(generate_encryption_key(32)));
 
     set_key(new_line)?;
 

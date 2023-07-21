@@ -2,7 +2,7 @@ const CONFIG_FILE: &str = "config.txt";
 
 use std::io::{Seek, SeekFrom, Write};
 
-use crate::file;
+use crate::{file, parse_config_line};
 
 use super::GenericError;
 
@@ -51,7 +51,7 @@ pub fn get_keys(keyword: &str) -> Result<Vec<String>, GenericError> {
     Ok(buffer
         .lines()
         .filter(|line| line.starts_with(&format!("{}{}", keyword, "=")))
-        .map(|l| l.split('=').nth(1).unwrap().trim().to_string())
+        .map(|l| parse_config_line!(l).unwrap().into_iter().nth(1).unwrap())
         .collect::<Vec<String>>())
 }
 
@@ -60,7 +60,7 @@ pub fn get_key(keyword: &str) -> Result<String, GenericError> {
 
     for line in buffer.lines() {
         if line.starts_with(&format!("{}{}", keyword, "=")) {
-            return Ok(line.split('=').nth(1).unwrap().trim().to_string());
+            return Ok(parse_config_line!(line).unwrap().into_iter().nth(1).unwrap());
         }
     }
     Err(GenericError::KeyNotFound {
@@ -104,7 +104,7 @@ pub fn key_exists(keyword: &str) -> Result<bool, GenericError> {
     Ok(false)
 }
 
-pub fn string_as_key<T: std::str::FromStr>(string: &str) -> Result<Vec<T>, T::Err>
+pub fn string_as_vec<T: std::str::FromStr>(string: &str) -> Result<Vec<T>, T::Err>
 where
     T::Err: std::fmt::Debug,
 {
@@ -113,4 +113,7 @@ where
         .split(',')
         .map(|val| val.trim().parse::<T>().unwrap())
         .collect::<Vec<T>>())
+}
+pub fn vec_as_string<T: ToString>(vec: Vec<T>) -> String {
+    format!("[{}]", vec.into_iter().map(|val| val.to_string()).collect::<Vec<_>>().join(","))
 }
