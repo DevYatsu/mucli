@@ -64,7 +64,7 @@ impl FileHeader {
 pub fn encrypt_file(input_path: &PathBuf, output_path: &PathBuf) -> Result<(), EncryptionError> {
     let (mut input_file, input_data) = file_as_bytes!(input_path);
 
-    let mut file_header = match get_file_data(&mut input_file) {
+    let mut file_header = match file_data!(input_file) {
         Ok(mut header) => {
             let latest_v = latest_encryption_version()?;
             if latest_v <= header.encryption_version {
@@ -103,7 +103,7 @@ pub fn encrypt_file(input_path: &PathBuf, output_path: &PathBuf) -> Result<(), E
 pub fn decrypt_file(input_path: &PathBuf, output_path: &PathBuf) -> Result<(), EncryptionError> {
     let (mut input_file, encrypted_data) = file_as_bytes!(input_path);
 
-    let mut file_header = get_file_data(&mut input_file)?;
+    let mut file_header = file_data!(input_file)?;
 
     if file_header.encryption_layer == 0 {
         return Err(EncryptionError::DecryptNotCryptedFile);
@@ -270,7 +270,7 @@ pub fn init_new_encryption_key() -> Result<(), EncryptionError> {
 pub fn update_file_encryption_key(filepath: &PathBuf) -> Result<(), EncryptionError> {
     //update file key to latest
     let mut file = File::open(filepath)?;
-    let initial_layer = get_file_data(&mut file)?.encryption_layer;
+    let initial_layer = file_data!(file)?.encryption_layer;
 
     if file_data!(file)?.encryption_version == latest_encryption_version()? {
         return Err(EncryptionError::CannotUpdateLatest);
