@@ -10,11 +10,13 @@ use simplecrypt::{decrypt, encrypt, DecryptionError};
 
 use crate::encryption::{generate_encryption_key, EncryptionError};
 use crate::utils::config_interact::vec_as_string;
-use crate::{file_truncate, config_line};
 use crate::utils::{
-    config_interact::{get_key, key_exists, replace_key, set_key, string_as_vec, filter_map_lines, get_keys},
+    config_interact::{
+        filter_map_lines, get_key, get_keys, key_exists, replace_key, set_key, string_as_vec,
+    },
     GenericError,
 };
+use crate::{config_line, file_truncate};
 
 extern crate custom_error;
 use custom_error::custom_error;
@@ -67,7 +69,10 @@ pub fn decrypt_password(crypted_value: Vec<u8>) -> Result<String, PasswordError>
 
 pub fn init_password_key() -> Result<(), PasswordError> {
     if !key_exists(PASSWORD_KEY_KEYWORD)? {
-        let new_line = config_line!(PASSWORD_KEY_KEYWORD, vec_as_string(generate_encryption_key(32)));
+        let new_line = config_line!(
+            PASSWORD_KEY_KEYWORD,
+            vec_as_string(generate_encryption_key(32))
+        );
         set_key(new_line)?
     }
     Ok(())

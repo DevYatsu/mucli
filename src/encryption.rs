@@ -1,5 +1,4 @@
-use crate::utils::config_interact::vec_as_string;
-use crate::{file_as_bytes, config_line};
+use crate::{config_line, file_as_bytes, parse_config_line};
 use rand::RngCore;
 use simplecrypt::{decrypt, encrypt, DecryptionError};
 use std::fs::File;
@@ -10,7 +9,7 @@ use std::time::Duration;
 
 const ENCRYPTION_KEYWORD: &str = "MUCLI_ENCRYPT";
 use crate::utils::{
-    config_interact::{filter_and_map_lines, key_exists, set_key},
+    config_interact::{filter_map_lines, key_exists, set_key, vec_as_string},
     terminal::arrow_progress,
     GenericError,
 };
@@ -140,7 +139,11 @@ fn set_encryption_key() -> Result<(), EncryptionError> {
         Err(_) => 0,
     };
 
-    let new_line = config_line!(ENCRYPTION_KEYWORD, version, vec_as_string(generate_encryption_key(32)));
+    let new_line = config_line!(
+        ENCRYPTION_KEYWORD,
+        version,
+        vec_as_string(generate_encryption_key(32))
+    );
 
     set_key(new_line)?;
 
@@ -148,8 +151,12 @@ fn set_encryption_key() -> Result<(), EncryptionError> {
 }
 
 fn encryption_keys() -> Result<Vec<Vec<u8>>, EncryptionError> {
-    let mut filtered_lines =
-        filter_and_map_lines(ENCRYPTION_KEYWORD, |line| parse_encryption_key_line(line))?;
+    let mut filtered_lines = filter_map_lines(|line| -> Option<(u32, Vec<u8>)> {
+        if line.starts_with(&format!("{}=", ENCRYPTION_KEYWORD)) {
+            return Some(parse_encryption_key_line(line));
+        }
+        None
+    })?;
 
     if filtered_lines.is_empty() {
         return Err(EncryptionError::NoKeyFound);
@@ -242,13 +249,19 @@ fn nth_encription_key(index: usize) -> Result<Vec<u8>, EncryptionError> {
 }
 
 fn latest_encryption_version() -> Result<u32, EncryptionError> {
-    let mut filtered_lines: Vec<u32> = filter_and_map_lines(ENCRYPTION_KEYWORD, |line| {
-        line.split('=')
-            .nth(1)
-            .unwrap()
-            .trim()
-            .parse::<u32>()
-            .unwrap()
+    let mut filtered_lines: Vec<u32> = filter_map_lines(|line| {
+        if line.starts_with(&format!("{}=", ENCRYPTION_KEYWORD)) {
+            return Some(
+                parse_config_line!(line)
+                    .unwrap()
+                    .into_iter()
+                    .nth(1)
+                    .unwrap()
+                    .parse::<u32>()
+                    .unwrap(),
+            );
+        }
+        None
     })?;
 
     if filtered_lines.len() == 0 {

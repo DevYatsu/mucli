@@ -60,7 +60,11 @@ pub fn get_key(keyword: &str) -> Result<String, GenericError> {
 
     for line in buffer.lines() {
         if line.starts_with(&format!("{}{}", keyword, "=")) {
-            return Ok(parse_config_line!(line).unwrap().into_iter().nth(1).unwrap());
+            return Ok(parse_config_line!(line)
+                .unwrap()
+                .into_iter()
+                .nth(1)
+                .unwrap());
         }
     }
     Err(GenericError::KeyNotFound {
@@ -69,19 +73,6 @@ pub fn get_key(keyword: &str) -> Result<String, GenericError> {
     })
 }
 
-//remove filter and map to only let filter_map
-pub fn filter_and_map_lines<F, T>(keyword: &str, f: F) -> Result<Vec<T>, GenericError>
-where
-    F: FnMut(&str) -> T,
-{
-    let (_, buffer) = file!(CONFIG_FILE);
-
-    Ok(buffer
-        .lines()
-        .filter(|line| line.starts_with(&format!("{}=", keyword)))
-        .map(f)
-        .collect())
-}
 pub fn filter_map_lines<F, T>(f: F) -> Result<Vec<T>, GenericError>
 where
     F: FnMut(&str) -> Option<T>,
@@ -115,5 +106,11 @@ where
         .collect::<Vec<T>>())
 }
 pub fn vec_as_string<T: ToString>(vec: Vec<T>) -> String {
-    format!("[{}]", vec.into_iter().map(|val| val.to_string()).collect::<Vec<_>>().join(","))
+    format!(
+        "[{}]",
+        vec.into_iter()
+            .map(|val| val.to_string())
+            .collect::<Vec<_>>()
+            .join(",")
+    )
 }
