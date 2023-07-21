@@ -50,10 +50,15 @@ fn main() {
         .subcommand(
             Command::new("encrypt")
                 .about("Encrypts the specified file and place the output file in specified dir")
-                .group(
+                .groups(
+                    [
                     ArgGroup::new("encrypt_actions")
                         .required(false)
-                        .args(["ukey", "cdir", "sfile", "purge"]),
+                        .args(["ukey", "cdir", "sfile", "purge"]),                    
+                    ArgGroup::new("additional_actions")
+                        .required(false)
+                        .args(["times", "ukey", "purge"])
+                    ]                
                 )
                 .arg(arg!(-'u' --"ukey" "Update encryption key or update encryption key of a file to the latest version").action(ArgAction::SetTrue))
                 .arg(arg!(-'c' --"cdir" "Place output file in current dir").action(ArgAction::SetTrue))

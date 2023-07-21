@@ -1,4 +1,4 @@
-use crate::{config_line, file_as_bytes, file_truncate, file_data, parse_config_line};
+use crate::{config_line, file_as_bytes, file_data, file_truncate, parse_config_line};
 use indicatif::ProgressBar;
 use rand::RngCore;
 use simplecrypt::{decrypt, encrypt, DecryptionError};
@@ -13,7 +13,7 @@ const CONFIG_FILE: &str = "config.txt";
 use crate::utils::{
     config_interact::{filter_map_lines, key_exists, set_key, vec_as_string},
     terminal::arrow_progress,
-    GenericError
+    GenericError,
 };
 
 extern crate custom_error;
@@ -292,13 +292,14 @@ pub fn update_file_encryption_key(filepath: &PathBuf) -> Result<(), EncryptionEr
 
 pub fn purge_encryption_keys() -> Result<(), EncryptionError> {
     let (mut file, _) = file_truncate!(CONFIG_FILE);
-    
+
     let filtered_content = filter_map_lines(|line| {
         if !line.starts_with(&format!("{}=", ENCRYPTION_KEYWORD)) {
-            return Some(line.to_string())
+            return Some(line.to_string());
         }
         None
-    })?.join("\n");
+    })?
+    .join("\n");
 
     file.write_all(filtered_content.as_bytes())?;
     Ok(())
