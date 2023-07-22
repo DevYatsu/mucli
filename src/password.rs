@@ -26,6 +26,7 @@ custom_error! {pub PasswordError
     Decrypt{source: DecryptionError} = "{source}",
     Encryption{source: EncryptionError} = "{source}",
     RetrievePassword = "Cannot retrieve password",
+    RetrievePassowrdKey = "Cannot retrieve password encryption key",
     SetPassword = "Cannot set password in config.txt",
     EncryptPassword = "Failed to encrypt password",
     DecryptPassword = "Failed to decrypt password"
@@ -38,30 +39,29 @@ pub fn set_password(password: &str) -> Result<(), PasswordError> {
 }
 
 pub fn get_password() -> Result<String, PasswordError> {
-    if !config!()?.key_exists(PASSWORD_KEYWORD)? {
+    let config = config!()?;
+    if !config.key_exists(PASSWORD_KEYWORD)? {
         return Err(GenericError::KeyNotFound {
             key: PASSWORD_KEYWORD.to_owned(),
         }
         .into());
     }
 
-    let crypted_password: Vec<u8> = string_as_vec::<u8>(&config!()?.get_key(PASSWORD_KEYWORD)?)?;
+    if let Some(password_string) = config.get_key(PASSWORD_KEYWORD)? {
+        let crypted_password: Vec<u8> = string_as_vec::<u8>(&password_string)?;
+        return decrypt_password(crypted_password);
+    }
 
-    Ok(decrypt_password(crypted_password)?)
+    Err(PasswordError::RetrievePassword)
 }
 
-fn encrypt_password(password: &str) -> Result<Vec<u8>, PasswordError> {
-    let key = string_as_vec::<u8>(&config!()?.get_key(PASSWORD_KEY_KEYWORD)?)?;
-
-    let encrypted = encrypt(password.as_bytes(), &key);
-    Ok(encrypted)
+pub fn encrypt_password(password: &str) -> Result<Vec<u8>, PasswordError> {
+    encrypt_decrypt_password(password.as_bytes().to_vec(), true)
 }
+
 pub fn decrypt_password(crypted_value: Vec<u8>) -> Result<String, PasswordError> {
-    let key: Vec<u8> = string_as_vec::<u8>(&config!()?.get_key(PASSWORD_KEY_KEYWORD)?)?;
-
-    let decrypted = decrypt(&crypted_value, &key)?;
-
-    Ok(String::from_utf8(decrypted).unwrap())
+    let decrypted = encrypt_decrypt_password(crypted_value, false)?;
+    Ok(String::from_utf8(decrypted).map_err(|_| PasswordError::DecryptPassword)?)
 }
 
 pub fn init_password_key() -> Result<(), PasswordError> {
@@ -108,4 +108,23 @@ pub fn retrieve_questions() -> Result<Vec<String>, PasswordError> {
     }
 
     Ok(config.get_keys(QUESTION_KEYWORD))
+}
+
+fn encrypt_decrypt_password(
+    password: Vec<u8>,
+    encrypt_bool: bool,
+) -> Result<Vec<u8>, PasswordError> {
+    let config = config!()?;
+    if let Some(password_string) = config.get_key(PASSWORD_KEY_KEYWORD)? {
+        let key: Vec<u8> = string_as_vec::<u8>(&password_string)?;
+
+        if encrypt_bool {
+            return Ok(encrypt(&password, &key));
+        } else {
+            let decrypted = decrypt(&password, &key)?;
+            return Ok(decrypted);
+        }
+    }
+
+    Err(PasswordError::EncryptPassword)
 }

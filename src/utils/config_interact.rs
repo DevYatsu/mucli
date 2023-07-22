@@ -72,20 +72,14 @@ impl Config {
             .collect::<Vec<String>>()
     }
 
-    pub fn get_key(&self, keyword: &str) -> Result<String, GenericError> {
+    pub fn get_key(&self, keyword: &str) -> Result<Option<String>, GenericError> {
         for line in self.buffer.lines() {
             if line.starts_with(&format!("{}{}", keyword, "=")) {
-                return Ok(parse_config_line!(line)
-                    .unwrap()
-                    .into_iter()
-                    .nth(1)
-                    .unwrap());
+                return Ok(parse_config_line!(line).unwrap().into_iter().nth(1));
             }
         }
 
-        Err(GenericError::KeyNotFound {
-            key: keyword.to_owned(),
-        })
+        Ok(None)
     }
 
     pub fn filter_map_lines<F, T>(&self, f: F) -> Result<Vec<T>, GenericError>
