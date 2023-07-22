@@ -1,20 +1,16 @@
-use crate::{config_line, file_as_bytes, file_data, file_truncate, parse_config_line};
+use crate::utils::file::CryptedFile;
+use crate::Config;
+use crate::{config, config_line, crypted_file, parse_config_line};
 use indicatif::ProgressBar;
 use rand::RngCore;
 use simplecrypt::{decrypt, encrypt, DecryptionError};
-use std::fs::File;
-use std::io::{Error, Read, Seek, SeekFrom, Write};
+use std::io::{Error, Write};
 use std::path::{Path, PathBuf};
 use std::thread;
 use std::time::Duration;
 
 const ENCRYPTION_KEYWORD: &str = "MUCLI_ENCRYPT";
-const CONFIG_FILE: &str = "config.txt";
-use crate::utils::{
-    config_interact::{filter_map_lines, key_exists, set_key, vec_as_string},
-    terminal::arrow_progress,
-    GenericError,
-};
+use crate::utils::{config_interact::vec_as_string, terminal::arrow_progress, GenericError};
 
 extern crate custom_error;
 use custom_error::custom_error;
@@ -24,7 +20,8 @@ custom_error! {pub EncryptionError
     Generic{source: GenericError} = "{source}",
     Decrypt{source: DecryptionError} = "{source}",
     NoKeyFound = "No key found in config.txt",
-    RetrievingKey = "Error retrieving encryption key.",
+    RetrievingKey = "Error retrieving encryption key",
+    KeyNotExist = "Encryption key does not exist",
     NoVersionFound = "No version found in config.txt",
     NoVersionSet = "No version set for this file",
     VersionFormat = "Invalid version format found in config.txt",
@@ -35,97 +32,39 @@ custom_error! {pub EncryptionError
     InvalidFileContent = "Target file must be a crypted file",
     DecryptNotCryptedFile = "Cannot decrypt a non-encrypted file",
     KeyUpdateFailed = "Impossible to update encryption key",
-    CannotUpdateLatest = "File is already at the latest encryption version"
-}
-
-pub struct FileHeader {
-    encryption_layer: u32,
-    encryption_version: u32,
-}
-
-impl FileHeader {
-    fn new(encryption_version: u32, encryption_layer: u32) -> Self {
-        FileHeader {
-            encryption_version,
-            encryption_layer,
-        }
-    }
-    fn increment_layer(&mut self) -> () {
-        self.encryption_layer += 1;
-    }
-    fn decrement_layer(&mut self) -> () {
-        self.encryption_layer -= 1;
-    }
-    fn set_version(&mut self, version: u32) -> () {
-        self.encryption_version = version;
-    }
+    CannotUpdateLatest = "File is already at the latest encryption version",
+    CannotProcessVoidFile = "Cannot process empty file"
 }
 
 pub fn encrypt_file(input_path: &PathBuf, output_path: &PathBuf) -> Result<(), EncryptionError> {
-    let (mut input_file, input_data) = file_as_bytes!(input_path);
+    let mut input_file = crypted_file!(input_path.to_path_buf())?;
 
-    let mut file_header = match file_data!(input_file) {
-        Ok(mut header) => {
-            let latest_v = latest_encryption_version()?;
-            if latest_v <= header.encryption_version {
-                header.set_version(latest_v);
-            }
-            header.increment_layer();
-            header
-        }
-        Err(EncryptionError::InvalidFileContent) => {
-            FileHeader::new(latest_encryption_version()?, 0)
-        }
-        Err(e) => return Err(e),
-    };
+    let key = nth_encription_key(input_file.encryption_version()? as usize)?;
 
-    let key = match nth_encription_key(file_header.encryption_version as usize) {
-        Ok(k) => k,
-        Err(_) => return Err(EncryptionError::RetrievingKey),
-    };
+    let encrypted: Vec<u8> = encrypt(&input_file.main_file_content()?, &key);
 
-    let data = if file_header.encryption_layer > 0 {
-        file_content(input_data)?
-    } else {
-        file_header.increment_layer();
-        input_data
-    };
+    let mut output_file = crypted_file!(output_path.to_path_buf())?.from(&mut input_file)?;
+    output_file.increment_layer()?;
 
-    let mut encrypted: Vec<u8> = encrypt(&data, &key);
-    set_file_data(&mut encrypted, file_header)?;
-
-    let mut output_file: File = File::create(output_path)?;
-    output_file.write_all(&encrypted)?;
+    output_file.update_content(encrypted)?;
 
     Ok(())
 }
 
 pub fn decrypt_file(input_path: &PathBuf, output_path: &PathBuf) -> Result<(), EncryptionError> {
-    let (mut input_file, encrypted_data) = file_as_bytes!(input_path);
+    let mut input_file = crypted_file!(input_path.to_path_buf())?;
 
-    let mut file_header = file_data!(input_file)?;
-
-    if file_header.encryption_layer == 0 {
+    if input_file.encryption_layer()? == 0 {
         return Err(EncryptionError::DecryptNotCryptedFile);
     }
 
-    let key = match nth_encription_key(file_header.encryption_version as usize) {
-        Ok(k) => k,
-        Err(_) => return Err(EncryptionError::RetrievingKey),
-    };
+    let key = nth_encription_key(input_file.encryption_version()? as usize)?;
 
-    let crypted_content: Vec<u8> = file_content(encrypted_data)?;
+    let decrypted_content: Vec<u8> = decrypt(&input_file.main_file_content()?, &key)?;
 
-    let mut decrypted_content: Vec<u8> = decrypt(&crypted_content, &key)?;
-
-    file_header.decrement_layer();
-    if file_header.encryption_layer > 0 {
-        set_file_data(&mut decrypted_content, file_header)?;
-    }
-
-    let mut output_file = File::create(&output_path)?;
-    // set_file_data(&mut output_file, file_version)?;
-    output_file.write_all(&decrypted_content)?;
+    let mut output_file = crypted_file!(output_path.to_path_buf())?.from(&mut input_file)?;
+    output_file.decrement_layer()?;
+    output_file.update_content(decrypted_content)?;
 
     Ok(())
 }
@@ -158,8 +97,8 @@ pub fn decrypt_file_entirely(
     input_path: &Path,
     output_path: &Path,
 ) -> Result<ProgressBar, EncryptionError> {
-    let (mut file, _) = file_as_bytes!(input_path);
-    let times = file_data!(&mut file)?.encryption_layer;
+    let file = crypted_file!(input_path.to_path_buf())?;
+    let times = file.encryption_layer()?;
 
     let mut counter = 0;
     let progress = arrow_progress(times as u64);
@@ -185,135 +124,9 @@ pub fn generate_encryption_key(length: usize) -> Vec<u8> {
     key
 }
 
-fn set_encryption_key() -> Result<(), EncryptionError> {
-    let version = match latest_encryption_version() {
-        Ok(val) => val + 1,
-        Err(_) => 0,
-    };
 
-    let new_line = config_line!(
-        ENCRYPTION_KEYWORD,
-        version,
-        vec_as_string(generate_encryption_key(32))
-    );
-
-    set_key(new_line)?;
-
-    Ok(())
-}
-
-fn encryption_keys() -> Result<Vec<Vec<u8>>, EncryptionError> {
-    let mut filtered_lines = filter_map_lines(|line| -> Option<(u32, Vec<u8>)> {
-        if line.starts_with(&format!("{}=", ENCRYPTION_KEYWORD)) {
-            return Some(parse_encryption_key_line(line));
-        }
-        None
-    })?;
-
-    if filtered_lines.is_empty() {
-        return Err(EncryptionError::NoKeyFound);
-    }
-
-    filtered_lines.sort_by_key(|(key, _)| *key);
-
-    let encryption_keys = filtered_lines.into_iter().map(|(_, vec)| vec).collect();
-
-    Ok(encryption_keys)
-}
-
-fn parse_encryption_key_line(line: &str) -> (u32, Vec<u8>) {
-    let mut iterator = line.split('=');
-    iterator.next();
-    let key_value = iterator.next().unwrap().trim();
-    let key = key_value.parse().unwrap();
-
-    let raw_values = iterator
-        .next()
-        .unwrap()
-        .trim()
-        .trim_matches(|c| c == '[' || c == ']');
-
-    let values: Vec<u8> = raw_values
-        .split(',')
-        .map(|val| val.trim().parse::<u8>().unwrap())
-        .collect();
-
-    (key, values)
-}
-
-pub fn init_encryption_key() -> Result<(), EncryptionError> {
-    match key_exists(ENCRYPTION_KEYWORD) {
-        Ok(val) => {
-            if let false = val {
-                set_encryption_key()?
-            }
-            Ok(())
-        }
-        Err(_) => Err(EncryptionError::ConfigNotFound),
-    }
-}
-
-pub fn init_new_encryption_key() -> Result<(), EncryptionError> {
-    match key_exists(ENCRYPTION_KEYWORD) {
-        Ok(val) => {
-            if let true = val {
-                set_encryption_key()?
-            } else {
-                return Err(EncryptionError::KeyUpdateFailed);
-            }
-            Ok(())
-        }
-        Err(_) => Err(EncryptionError::ConfigNotFound),
-    }
-}
-
-pub fn update_file_encryption_key(filepath: &PathBuf) -> Result<(), EncryptionError> {
-    //update file key to latest
-    let mut file = File::open(filepath)?;
-    let initial_layer = file_data!(file)?.encryption_layer;
-
-    if file_data!(file)?.encryption_version == latest_encryption_version()? {
-        return Err(EncryptionError::CannotUpdateLatest);
-    }
-
-    // first we decrypt the file
-    let progress_decrypt: ProgressBar = decrypt_file_entirely(filepath, filepath)?;
-    thread::sleep(Duration::from_millis(250));
-    progress_decrypt.finish_and_clear();
-
-    // we encrypt it again with newly generated key
-    let progress_encrypt: ProgressBar = encrypt_file_x(filepath, filepath, initial_layer as u8)?;
-
-    thread::sleep(Duration::from_millis(250));
-    progress_encrypt.finish_and_clear();
-
-    Ok(())
-}
-
-pub fn purge_encryption_keys() -> Result<(), EncryptionError> {
-    let (mut file, _) = file_truncate!(CONFIG_FILE);
-
-    let filtered_content = filter_map_lines(|line| {
-        if !line.starts_with(&format!("{}=", ENCRYPTION_KEYWORD)) {
-            return Some(line.to_string());
-        }
-        None
-    })?
-    .join("\n");
-
-    file.write_all(filtered_content.as_bytes())?;
-    Ok(())
-}
-
-fn nth_encription_key(index: usize) -> Result<Vec<u8>, EncryptionError> {
-    let keys = encryption_keys()?;
-    let key = keys[index].clone();
-
-    Ok(key)
-}
-
-fn latest_encryption_version() -> Result<u32, EncryptionError> {
-    let mut filtered_lines: Vec<u32> = filter_map_lines(|line| {
+pub fn latest_encryption_version() -> Result<u32, EncryptionError> {
+    let mut filtered_lines: Vec<u32> = config!()?.filter_map_lines(|line| {
         if line.starts_with(&format!("{}=", ENCRYPTION_KEYWORD)) {
             return Some(
                 parse_config_line!(line)
@@ -337,66 +150,6 @@ fn latest_encryption_version() -> Result<u32, EncryptionError> {
     Ok(filtered_lines[0])
 }
 
-const HEADER_SIZE: usize = 4;
-const VERSION_SIZE: usize = 4;
-const LAYER_SIZE: usize = 4; // encryption layer, how many times the file was encrypted
-fn set_file_data(data: &mut Vec<u8>, file_header: FileHeader) -> Result<(), EncryptionError> {
-    // Convert the version to bytes to write to the file
-    let version_bytes: [u8; VERSION_SIZE] = file_header.encryption_version.to_be_bytes();
-    let header_marker: [u8; HEADER_SIZE] = [0xAA, 0xBB, 0xCC, 0xDD];
-    let layer_bytes = file_header.encryption_layer.to_be_bytes();
-
-    // Insert the header marker and version at the start of the vector
-    data.splice(0..0, layer_bytes.iter().cloned());
-    data.splice(0..0, version_bytes.iter().cloned());
-    data.splice(0..0, header_marker.iter().cloned());
-
-    Ok(())
-}
-
-pub fn get_file_data(file: &mut File) -> Result<FileHeader, EncryptionError> {
-    let mut header_marker = [0u8; HEADER_SIZE];
-    let mut version_bytes = [0u8; VERSION_SIZE];
-    let mut layer_bytes = [0u8; LAYER_SIZE];
-
-    // Save the current cursor position
-    let current_pos = file.seek(SeekFrom::Current(0))?;
-
-    // Move the cursor to the start of the file
-    file.seek(SeekFrom::Start(0))?;
-
-    // Read the header marker and version bytes from the file
-    file.read_exact(&mut header_marker)?;
-    if header_marker != [0xAA, 0xBB, 0xCC, 0xDD] {
-        file.seek(SeekFrom::Start(current_pos))?;
-        return Err(EncryptionError::InvalidFileContent);
-    }
-
-    file.read_exact(&mut version_bytes)?;
-    let encryption_version = u32::from_be_bytes(version_bytes);
-
-    file.read_exact(&mut layer_bytes)?;
-    let encryption_layer = u32::from_be_bytes(layer_bytes);
-
-    // Restore the original cursor position
-    file.seek(SeekFrom::Start(current_pos))?;
-
-    Ok(FileHeader {
-        encryption_layer,
-        encryption_version,
-    })
-}
-
-fn file_content(mut decrypted: Vec<u8>) -> Result<Vec<u8>, EncryptionError> {
-    if decrypted.len() < HEADER_SIZE + VERSION_SIZE + LAYER_SIZE {
-        return Err(EncryptionError::InvalidFileContent);
-    }
-
-    // Split off the header and version bytes from the decrypted content
-    let file_content: Vec<u8> = decrypted.split_off(HEADER_SIZE + VERSION_SIZE + LAYER_SIZE);
-    Ok(file_content)
-}
-
 pub fn encrypted_file_path(file_path: &Path, current_dir: &Path) -> PathBuf {
     let mut file_name: String = file_path.file_name().unwrap().to_string_lossy().to_string();
     file_name = format!("enc.{}", file_name);
@@ -413,3 +166,134 @@ pub fn decrypted_file_path(file_path: &Path, current_dir: &Path) -> PathBuf {
 
     output_path
 }
+
+
+pub fn init_encryption_key() -> Result<(), EncryptionError> {
+    match config!()?.key_exists(ENCRYPTION_KEYWORD) {
+        Ok(val) => {
+            if let false = val {
+                set_encryption_key()?
+            }
+            Ok(())
+        }
+        Err(_) => Err(EncryptionError::ConfigNotFound),
+    }
+}
+
+pub fn init_new_encryption_key() -> Result<(), EncryptionError> {
+    match config!()?.key_exists(ENCRYPTION_KEYWORD) {
+        Ok(val) => {
+            if let true = val {
+                set_encryption_key()?
+            } else {
+                return Err(EncryptionError::KeyUpdateFailed);
+            }
+            Ok(())
+        }
+        Err(_) => Err(EncryptionError::ConfigNotFound),
+    }
+}
+
+pub fn update_file_encryption_key(filepath: &PathBuf) -> Result<(), EncryptionError> {
+    //update file key to latest
+    let file = crypted_file!(filepath.to_path_buf())?;
+    let initial_layer = file.encryption_layer()?;
+
+    if file.encryption_version()? == latest_encryption_version()? {
+        return Err(EncryptionError::CannotUpdateLatest);
+    }
+
+    // first we decrypt the file
+    let progress_decrypt: ProgressBar = decrypt_file_entirely(&filepath, &filepath)?;
+    thread::sleep(Duration::from_millis(250));
+    progress_decrypt.finish_and_clear();
+
+    // we encrypt it again with newly generated key
+    let progress_encrypt: ProgressBar = encrypt_file_x(&filepath, &filepath, initial_layer as u8)?;
+
+    thread::sleep(Duration::from_millis(250));
+    progress_encrypt.finish_and_clear();
+
+    Ok(())
+}
+
+pub fn purge_encryption_keys() -> Result<(), EncryptionError> {
+    let mut config = config!()?;
+
+    let filtered_content = config
+        .filter_map_lines(|line| {
+            if !line.starts_with(&format!("{}=", ENCRYPTION_KEYWORD)) {
+                return Some(line.to_string());
+            }
+            None
+        })?
+        .join("\n");
+
+    config.file.write_all(filtered_content.as_bytes())?;
+    Ok(())
+}
+
+
+fn set_encryption_key() -> Result<(), EncryptionError> {
+    let version = match latest_encryption_version() {
+        Ok(val) => val + 1,
+        Err(_) => 0,
+    };
+
+    let new_line = config_line!(
+        ENCRYPTION_KEYWORD,
+        version,
+        vec_as_string(generate_encryption_key(32))
+    );
+
+    config!()?.set_key(new_line)?;
+
+    Ok(())
+}
+
+fn retrieve_encryption_keys() -> Result<Vec<Vec<u8>>, EncryptionError> {
+    let mut filtered_lines = config!()?.filter_map_lines(|line| -> Option<(usize, Vec<u8>)> {
+        if line.starts_with(&format!("{}=", ENCRYPTION_KEYWORD)) {
+            return Some(parse_encryption_key_line(line));
+        }
+        None
+    })?;
+
+    if filtered_lines.is_empty() {
+        return Err(EncryptionError::NoKeyFound);
+    }
+
+    filtered_lines.sort_by_key(|(key, _)| *key);
+
+    let encryption_keys = filtered_lines.into_iter().map(|(_, vec)| vec).collect();
+
+    Ok(encryption_keys)
+}
+
+fn parse_encryption_key_line(line: &str) -> (usize, Vec<u8>) {
+    let mut iterator = line.split('=');
+    iterator.next();
+    let key_value = iterator.next().unwrap().trim();
+    let index = key_value.parse().unwrap();
+
+    let raw_values = iterator
+        .next()
+        .unwrap()
+        .trim()
+        .trim_matches(|c| c == '[' || c == ']');
+
+    let values: Vec<u8> = raw_values
+        .split(',')
+        .map(|val| val.trim().parse::<u8>().unwrap())
+        .collect();
+
+    (index, values)
+}
+
+fn nth_encription_key(index: usize) -> Result<Vec<u8>, EncryptionError> {
+    let keys = retrieve_encryption_keys()?;
+    if let Some(key) = keys.get(index) {
+        Ok(key.clone())
+    } else {
+        Err(EncryptionError::KeyNotExist)
+    }}

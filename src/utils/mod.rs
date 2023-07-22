@@ -10,6 +10,6 @@ use custom_error::custom_error;
 custom_error! {pub GenericError
     Io{source: Error} = "{source}",
     Format{source: ParseIntError} = "{source}",
-    KeyNotFound{key: String, filename: String} = "Key \"{key}\" not found in {filename}.",
+    KeyNotFound{key: String} = "Key \"{key}\" not found in config file.",
     Unknown = "unknown error"
 }

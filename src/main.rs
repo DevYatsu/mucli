@@ -3,15 +3,15 @@ mod password;
 mod update;
 mod utils;
 
+use crate::utils::config_interact::Config;
 use crate::{
     encryption::{decrypt_file, encrypt_file, encrypt_file_x, purge_encryption_keys},
     password::add_password_recovery_question,
-    update::can_update,
 };
 use clap::{arg, command, ArgAction, ArgGroup, Command};
 use dialoguer::{
     theme::{self, ColorfulTheme},
-    Confirm, Input, Password, Select,
+    Input, Password, Select,
 };
 use encryption::{
     decrypt_file_entirely, decrypted_file_path, encrypted_file_path, init_encryption_key,
@@ -25,8 +25,6 @@ use std::{
     env::current_dir,
     path::{Path, PathBuf},
 };
-use update::get_latest_release_version;
-use utils::config_interact::filter_map_lines;
 
 const VERSION: &str = "v1.0.0";
 
@@ -56,16 +54,14 @@ async fn main() {
         .subcommand(
             Command::new("encrypt")
                 .about("Encrypt the specified file and place the output file in specified dir")
-                .groups(
-                    [
+                .groups([
                     ArgGroup::new("encrypt_actions")
                         .required(false)
                         .args(["ukey", "cdir", "sfile", "purge"]),                    
                     ArgGroup::new("additional_actions")
                         .required(false)
                         .args(["times", "ukey", "purge"])
-                    ]                
-                )
+                ])
                 .arg(arg!(-'u' --"ukey" "Update encryption key or update encryption key of a file to the latest version").action(ArgAction::SetTrue))
                 .arg(arg!(-'c' --"cdir" "Place output file in current dir").action(ArgAction::SetTrue))
                 .arg(arg!(-'s' --"sfile" "Select target file as output file").action(ArgAction::SetTrue))
@@ -114,7 +110,7 @@ async fn main() {
                                         times
                                     );
                                 }
-                                Err(_) => print_err!("Failed to encrypt file"),
+                                Err(e) => print_err!("(encryption failed): {}", e),
                             };
                         } else {
                             match encrypt_file(&file_path.to_path_buf(), &file_path.to_path_buf()) {
@@ -124,7 +120,7 @@ async fn main() {
                                         &file_path
                                     )
                                 }
-                                Err(_) => print_err!("Failed to encrypt file"),
+                                Err(e) => print_err!("(encryption failed): {}", e),
                             };
                         }
                     } else if let true = sub_matches.get_flag("cdir") {
@@ -141,17 +137,20 @@ async fn main() {
                                                 output_path
                                             );
                                         }
-                                        Err(_) => print_err!("Failed to encrypt file"),
+                                        Err(e) => print_err!("(encryption failed): {}", e),
                                     };
                                 } else {
-                                    match encrypt_file(&file_path.to_path_buf(), &output_path) {
+                                    match encrypt_file(
+                                        &file_path.to_path_buf(),
+                                        &output_path.to_path_buf(),
+                                    ) {
                                         Ok(_) => {
                                             print_success!(
                                                 "Encrypted file saved as {:?}!",
                                                 output_path
                                             )
                                         }
-                                        Err(_) => print_err!("Failed to encrypt file"),
+                                        Err(e) => print_err!("(encryption failed): {}", e),
                                     };
                                 }
                             }
@@ -184,17 +183,20 @@ async fn main() {
                                                 output_path
                                             );
                                         }
-                                        Err(_) => print_err!("Failed to encrypt file"),
+                                        Err(e) => print_err!("(encryption failed) {}", e),
                                     };
                                 } else {
-                                    match encrypt_file(&file_path.to_path_buf(), &output_path) {
+                                    match encrypt_file(
+                                        &file_path.to_path_buf(),
+                                        &output_path.to_path_buf(),
+                                    ) {
                                         Ok(_) => {
                                             print_success!(
                                                 "Encrypted file saved as {:?}!",
                                                 output_path
                                             )
                                         }
-                                        Err(_) => print_err!("Failed to encrypt file"),
+                                        Err(e) => print_err!("(encryption failed) {}", e),
                                     };
                                 }
                             }
@@ -204,19 +206,43 @@ async fn main() {
                         match file_path.parent() {
                             Some(parent_dir) => {
                                 let output_path = encrypted_file_path(&file_path, &parent_dir);
-                                match encrypt_file(&file_path.to_path_buf(), &output_path) {
-                                    Ok(_) => {
-                                        print_success!("Encrypted file saved as {:?}!", output_path)
-                                    }
-                                    Err(_) => print_err!("Failed to encrypt file"),
-                                };
+                                if let Some(times) = sub_matches.get_one::<u8>("times") {
+                                    match encrypt_file_x(
+                                        &file_path.to_path_buf(),
+                                        &output_path.to_path_buf(),
+                                        *times,
+                                    ) {
+                                        Ok(pb) => {
+                                            pb.finish_and_clear();
+                                            print_success!(
+                                                "{:?} content was encrypted {} times successfully",
+                                                &file_path,
+                                                times
+                                            );
+                                        }
+                                        Err(e) => print_err!("(encryption failed): {}", e),
+                                    };
+                                } else {
+                                    match encrypt_file(
+                                        &file_path.to_path_buf(),
+                                        &output_path.to_path_buf(),
+                                    ) {
+                                        Ok(_) => {
+                                            print_success!(
+                                                "Encrypted file saved as {:?}!",
+                                                output_path
+                                            )
+                                        }
+                                        Err(e) => print_err!("(encryption failed) {}", e),
+                                    };
+                                }
                             }
                             None => print_err!("Failed to get target file parent directory"),
                         }
                     }
                 } else {
                     print_err!("{:?} does not exist!", filepath);
-                    print_success!("Check target file and try again");
+                    print_solution!("Check target file and try again");
                     return;
                 }
             } else if let true = sub_matches.get_flag("ukey") {
@@ -254,7 +280,7 @@ async fn main() {
                                         &file_path
                                     );
                                 }
-                                Err(_) => print_err!("Failed to decrypt file"),
+                                Err(e) => print_err!("(decryption failed): {}", e),
                             };
                         } else {
                             match decrypt_file(&file_path.to_path_buf(), &file_path.to_path_buf()) {
@@ -264,7 +290,7 @@ async fn main() {
                                         &file_path
                                     )
                                 }
-                                Err(_) => print_err!("Failed to decrypt file"),
+                                Err(e) => print_err!("(decryption failed): {}", e),
                             };
                         }
                     } else if let true = sub_matches.get_flag("cdir") {
@@ -280,17 +306,20 @@ async fn main() {
                                                 output_path
                                             );
                                         }
-                                        Err(e) => print_err!("Failed to decrypt file: {}", e),
+                                        Err(e) => print_err!("(decryption failed): {}", e),
                                     };
                                 } else {
-                                    match decrypt_file(&file_path.to_path_buf(), &output_path) {
+                                    match decrypt_file(
+                                        &file_path.to_path_buf(),
+                                        &output_path.to_path_buf(),
+                                    ) {
                                         Ok(_) => {
                                             print_success!(
                                                 "Decrypted file saved as {:?}!",
                                                 output_path
                                             )
                                         }
-                                        Err(e) => print_err!("Failed to decrypt file: {}", e),
+                                        Err(e) => print_err!("(decryption failed): {}", e),
                                     };
                                 }
                             }
@@ -311,7 +340,7 @@ async fn main() {
                                                 output_path
                                             );
                                         }
-                                        Err(e) => print_err!("Failed to decrypt file: {}", e),
+                                        Err(e) => print_err!("(decryption failed): {}", e),
                                     };
                                 } else {
                                     match decrypt_file(&file_path.to_path_buf(), &output_path) {
@@ -321,7 +350,7 @@ async fn main() {
                                                 output_path
                                             )
                                         }
-                                        Err(e) => print_err!("Failed to decrypt file: {}", e),
+                                        Err(e) => print_err!("(decryption failed): {}", e),
                                     };
                                 }
                             }
@@ -340,17 +369,20 @@ async fn main() {
                                                 output_path
                                             );
                                         }
-                                        Err(e) => print_err!("Failed to decrypt file: {}", e),
+                                        Err(e) => print_err!("(decryption failed): {}", e),
                                     };
                                 } else {
-                                    match decrypt_file(&file_path.to_path_buf(), &output_path) {
+                                    match decrypt_file(
+                                        &file_path.to_path_buf(),
+                                        &output_path.to_path_buf(),
+                                    ) {
                                         Ok(_) => {
                                             print_success!(
                                                 "Decrypted file saved as {:?}!",
                                                 output_path
                                             )
                                         }
-                                        Err(e) => print_err!("Failed to decrypt file: {}", e),
+                                        Err(e) => print_err!("(decryption failed): {}", e),
                                     };
                                 }
                             }
@@ -359,7 +391,7 @@ async fn main() {
                     }
                 } else {
                     print_err!("{:?} does not exist!", filepath);
-                    print_success!("Check target file and try again");
+                    print_solution!("Check target file and try again");
                     return;
                 }
             }
@@ -524,10 +556,11 @@ async fn main() {
                                     })
                                     .interact_text()
                                     .unwrap();
+
                                 let answer: String = Input::with_theme(&ColorfulTheme::default())
                                     .with_prompt("The Answer")
                                     .validate_with(|input: &String| -> Result<(), &str> {
-                                        if input.len() > 2 {
+                                        if input.len() > 1 {
                                             Ok(())
                                         } else {
                                             Err("Question must be at least 3 characters long")
@@ -609,34 +642,44 @@ async fn main() {
                                     .interact_text()
                                     .unwrap();
 
-                                questions = match filter_map_lines(|line| -> Option<String> {
-                                    if answered_questions.iter().any(|[q, a]| {
-                                        line == &format!("{}={}={}", QUESTION_KEYWORD, q, a)
-                                    }) {
-                                        None
-                                    } else if line
-                                        == &format!(
-                                            "{}={}={}",
-                                            QUESTION_KEYWORD, questions[chosen], answer
-                                        )
-                                    {
-                                        answered_questions.push([
-                                            questions[chosen].to_owned(),
-                                            answer.to_owned(),
-                                        ]);
-                                        if answered_questions.len() < 3 {
-                                            print_success!("That's a right answer");
+                                questions = match config!() {
+                                    Ok(c) => {
+                                        match c.filter_map_lines(|line| -> Option<String> {
+                                            if answered_questions.iter().any(|[q, a]| {
+                                                line == &format!("{}={}={}", QUESTION_KEYWORD, q, a)
+                                            }) {
+                                                None
+                                            } else if line
+                                                == &format!(
+                                                    "{}={}={}",
+                                                    QUESTION_KEYWORD, questions[chosen], answer
+                                                )
+                                            {
+                                                answered_questions.push([
+                                                    questions[chosen].to_owned(),
+                                                    answer.to_owned(),
+                                                ]);
+                                                if answered_questions.len() < 3 {
+                                                    print_success!("That's a right answer");
+                                                }
+                                                None
+                                            } else if line
+                                                .starts_with(&format!("{}=", QUESTION_KEYWORD))
+                                            {
+                                                Some(line.split('=').nth(1).unwrap().to_string())
+                                            } else {
+                                                None
+                                            }
+                                        }) {
+                                            Ok(v) => v,
+                                            Err(_) => {
+                                                print_err!("An error occured!");
+                                                return;
+                                            }
                                         }
-                                        None
-                                    } else if line.starts_with(&format!("{}=", QUESTION_KEYWORD)) {
-                                        Some(line.split('=').nth(1).unwrap().to_string())
-                                    } else {
-                                        None
                                     }
-                                }) {
-                                    Ok(v) => v,
-                                    Err(_) => {
-                                        print_err!("An error occured!");
+                                    Err(e) => {
+                                        print_err!("{:?}", e);
                                         return;
                                     }
                                 };
@@ -683,24 +726,24 @@ async fn main() {
         Some(("update", _)) => {
             print_future_update!("Command coming soon!");
             return;
-            match get_latest_release_version().await {
-                Ok(v) => {
-                    print_success!("Latest release version is \"{}\"", v);
-                    if can_update(VERSION, &v) {
-                        print_success!("This version is superior to current version \"{}\"", v);
-                        let confirmation = Confirm::with_theme(&ColorfulTheme::default())
-                            .with_prompt("Would you like to upgrade to the latest version?")
-                            .interact()
-                            .unwrap();
+            // match get_latest_release_version().await {
+            //     Ok(v) => {
+            //         print_success!("Latest release version is \"{}\"", v);
+            //         if can_update(VERSION, &v) {
+            //             print_success!("This version is superior to current version \"{}\"", v);
+            //             let confirmation = Confirm::with_theme(&ColorfulTheme::default())
+            //                 .with_prompt("Would you like to upgrade to the latest version?")
+            //                 .interact()
+            //                 .unwrap();
 
-                        if !confirmation {
-                            return;
-                        }
-                        //update version
-                    }
-                }
-                Err(e) => print_err!("{}", e),
-            };
+            //             if !confirmation {
+            //                 return;
+            //             }
+            //             //update version
+            //         }
+            //     }
+            //     Err(e) => print_err!("{}", e),
+            // };
         }
         _ => unreachable!("Exhausted list of subcommands and subcommand_required prevents `None`"),
     }

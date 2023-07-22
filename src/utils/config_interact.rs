@@ -1,98 +1,105 @@
-const CONFIG_FILE: &str = "config.txt";
+use std::{
+    fs::File,
+    io::{Read, Seek, SeekFrom, Write},
+    path::PathBuf,
+};
 
-use std::io::{Seek, SeekFrom, Write};
-
-use crate::{file_as_str, parse_config_line};
+use crate::parse_config_line;
 
 use super::GenericError;
 
-pub fn set_key(new_line: String) -> Result<(), GenericError> {
-    let (mut file, buffer) = file_as_str!(CONFIG_FILE);
+#[macro_export]
+macro_rules! config {
+    () => {{
+        use std::path::Path;
+        const CONFIG_FILE: &str = "config.txt";
+        Config::new(&Path::new(CONFIG_FILE).to_path_buf())
+    }};
+}
 
-    file.seek(SeekFrom::Start(0))?; // Move the cursor to the beginning of the file
+pub struct Config {
+    pub file: File,
+    buffer: String,
+}
+impl Config {
+    pub fn new(path: &PathBuf) -> Result<Self, GenericError> {
+        let mut file = std::fs::OpenOptions::new()
+            .read(true)
+            .write(true)
+            .create(true)
+            .open(path)?;
 
-    file.set_len(0)?;
+        let mut buffer = String::new();
+        file.read_to_string(&mut buffer)?;
 
-    for line in buffer.lines() {
-        writeln!(file, "{}", line)?;
+        Ok(Self { file, buffer })
     }
 
-    writeln!(file, "{}", new_line)?;
+    pub fn set_key(&mut self, new_line: String) -> Result<(), GenericError> {
+        writeln!(self.file, "{}", new_line)?;
 
-    Ok(())
-}
+        Ok(())
+    }
 
-pub fn replace_key(keyword: &str, new_line: String) -> Result<(), GenericError> {
-    let (mut file, buffer) = file_as_str!(CONFIG_FILE);
+    pub fn replace_key(&mut self, keyword: &str, mut new_line: String) -> Result<(), GenericError> {
+        new_line.push('\n');
+        // Create a new buffer with modified lines
+        let modified_buffer = self
+            .buffer
+            .lines()
+            .filter(|line| !line.starts_with(&format!("{}=", keyword)))
+            .chain(std::iter::once(new_line.as_str()))
+            .collect::<Vec<&str>>()
+            .join("\n");
 
-    // Create a new buffer with modified lines
-    let modified_buffer = buffer
-        .lines()
-        .filter(|line| !line.starts_with(&format!("{}=", keyword)))
-        .chain(std::iter::once(new_line.as_str()))
-        .collect::<Vec<&str>>()
-        .join("\n");
+        // Reset the file pointer to the beginning
+        self.file.seek(SeekFrom::Start(0))?;
 
-    // Reset the file pointer to the beginning
-    file.seek(SeekFrom::Start(0))?;
+        // Write the modified contents to the file
+        self.file.write_all(modified_buffer.as_bytes())?;
 
-    // Write the modified contents to the file
-    file.write_all(modified_buffer.as_bytes())?;
+        // Truncate any remaining content after the new data
+        self.file.set_len(modified_buffer.len() as u64)?;
 
-    // Truncate any remaining content after the new data
-    file.set_len(modified_buffer.len() as u64)?;
+        Ok(())
+    }
 
-    Ok(())
-}
+    pub fn get_keys(&self, keyword: &str) -> Vec<String> {
+        self.buffer
+            .lines()
+            .filter(|line| line.starts_with(&format!("{}{}", keyword, "=")))
+            .map(|l| parse_config_line!(l).unwrap().into_iter().nth(1).unwrap())
+            .collect::<Vec<String>>()
+    }
 
-pub fn get_keys(keyword: &str) -> Result<Vec<String>, GenericError> {
-    let (_, buffer) = file_as_str!(CONFIG_FILE);
-
-    Ok(buffer
-        .lines()
-        .filter(|line| line.starts_with(&format!("{}{}", keyword, "=")))
-        .map(|l| parse_config_line!(l).unwrap().into_iter().nth(1).unwrap())
-        .collect::<Vec<String>>())
-}
-
-pub fn get_key(keyword: &str) -> Result<String, GenericError> {
-    let (_, buffer) = file_as_str!(CONFIG_FILE);
-
-    for line in buffer.lines() {
-        if line.starts_with(&format!("{}{}", keyword, "=")) {
-            return Ok(parse_config_line!(line)
-                .unwrap()
-                .into_iter()
-                .nth(1)
-                .unwrap());
+    pub fn get_key(&self, keyword: &str) -> Result<Option<String>, GenericError> {
+        for line in self.buffer.lines() {
+            if line.starts_with(&format!("{}{}", keyword, "=")) {
+                return Ok(parse_config_line!(line).unwrap().into_iter().nth(1));
+            }
         }
+
+        Ok(None)
     }
-    Err(GenericError::KeyNotFound {
-        key: keyword.to_owned(),
-        filename: CONFIG_FILE.to_owned(),
-    })
-}
 
-pub fn filter_map_lines<F, T>(f: F) -> Result<Vec<T>, GenericError>
-where
-    F: FnMut(&str) -> Option<T>,
-{
-    let (_, buffer) = file_as_str!(CONFIG_FILE);
-
-    Ok(buffer.lines().filter_map(f).collect())
-}
-
-pub fn key_exists(keyword: &str) -> Result<bool, GenericError> {
-    let (_, buffer) = file_as_str!(CONFIG_FILE);
-
-    if buffer
-        .lines()
-        .any(|line| line.starts_with(&format!("{}=", keyword)))
+    pub fn filter_map_lines<F, T>(&self, f: F) -> Result<Vec<T>, GenericError>
+    where
+        F: FnMut(&str) -> Option<T>,
     {
-        // Encryption key already exists, no need to write it again
-        return Ok(true);
+        Ok(self.buffer.lines().filter_map(f).collect())
     }
-    Ok(false)
+
+    pub fn key_exists(&self, keyword: &str) -> Result<bool, GenericError> {
+        if self
+            .buffer
+            .lines()
+            .any(|line| line.starts_with(&format!("{}=", keyword)))
+        {
+            // Encryption key already exists, no need to write it again
+            return Ok(true);
+        }
+        Ok(false)
+    }
 }
 
 pub fn string_as_vec<T: std::str::FromStr>(string: &str) -> Result<Vec<T>, T::Err>
