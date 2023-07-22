@@ -29,8 +29,12 @@ pub async fn get_latest_release_version() -> Result<String, UpdateError> {
 }
 
 pub fn can_update(current_v: &str, latest_v: &str) -> bool {
-    let current_v = current_v.trim_start_matches("version").trim_start_matches('v');
-    let latest_v = latest_v.trim_start_matches("version").trim_start_matches('v');
+    let current_v = current_v
+        .trim_start_matches("version")
+        .trim_start_matches('v');
+    let latest_v = latest_v
+        .trim_start_matches("version")
+        .trim_start_matches('v');
 
     current_v != latest_v
 }
