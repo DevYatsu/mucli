@@ -16,6 +16,7 @@ pub fn password_command(sub_matches: &ArgMatches) {
         print_err!("Initializing password key failed!");
         return;
     }
+
     if let true = sub_matches.contains_id("init") {
         match get_password() {
             Ok(_) => {
