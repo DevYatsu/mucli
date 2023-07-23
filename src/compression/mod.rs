@@ -1,3 +1,6 @@
+mod annex;
+
+use crate::compression::annex::create_zip;
 use std::{
     env::current_dir,
     io::Error,
@@ -6,13 +9,12 @@ use std::{
 
 use clap::ArgMatches;
 use zip::result::ZipError;
-use zip_extensions::write::zip_create_from_directory;
 
 use custom_error::custom_error;
 
 use crate::{print_err, print_solution, print_success};
 
-custom_error! { CompressionError
+custom_error! {pub CompressionError
     Io{source: Error} = "{source}",
     Zip{source: ZipError} = "{source}",
     Default = "Failed to compress file",
@@ -75,12 +77,5 @@ pub fn compress_command(sub_matches: &ArgMatches) {
             print_solution!("Check source directory and try again");
             return;
         }
-    }
-}
-
-fn create_zip(source_path: &PathBuf, output_path: &PathBuf) -> Result<(), CompressionError> {
-    match zip_create_from_directory(&output_path, &source_path) {
-        Ok(_) => Ok(()),
-        Err(e) => Err(CompressionError::Custom { src: e.to_string() }),
     }
 }
