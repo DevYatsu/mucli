@@ -4,7 +4,9 @@ use crate::utils::GenericError;
 
 pub fn rename(source_path: &PathBuf, name: &PathBuf) -> Result<(), GenericError> {
     if source_path == name {
-        return Err(GenericError::Custom { message: format!( "Target is already named {:?}", name) })
+        return Err(GenericError::Custom {
+            message: format!("Target is already named {:?}", name),
+        });
     }
 
     if let Some(path_to_dir) = source_path.parent() {

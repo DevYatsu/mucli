@@ -11,6 +11,7 @@ use super::GenericError;
 #[macro_export]
 macro_rules! config {
     () => {{
+        use crate::Config;
         use std::path::Path;
         const CONFIG_FILE: &str = "config.txt";
         Config::new(&Path::new(CONFIG_FILE).to_path_buf())

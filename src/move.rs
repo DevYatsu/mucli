@@ -4,7 +4,9 @@ use crate::utils::GenericError;
 
 pub fn mv(source_path: &PathBuf, target: &PathBuf) -> Result<(), GenericError> {
     if source_path == target {
-        return Err(GenericError::Custom { message: "Source must be different from target".to_string() })
+        return Err(GenericError::Custom {
+            message: "Source must be different from target".to_string(),
+        });
     }
 
     // Check if the source path exists
