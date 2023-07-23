@@ -1,4 +1,3 @@
-mod compress;
 mod copy;
 mod encryption;
 mod r#move;
@@ -6,8 +5,9 @@ mod password;
 mod rename;
 mod update;
 mod utils;
+mod compression;
 
-use crate::compress::compress_command;
+use crate::compression::compress_command;
 use crate::copy::copy;
 use crate::r#move::mv;
 use crate::rename::rename;
