@@ -1,3 +1,4 @@
+mod compression;
 mod copy;
 mod encryption;
 mod r#move;
@@ -5,7 +6,6 @@ mod password;
 mod rename;
 mod update;
 mod utils;
-mod compression;
 
 use crate::compression::compress_command;
 use crate::copy::copy;
@@ -98,6 +98,7 @@ async fn main() {
             Command::new("compress")
                 .about("Compress the specified directory and place the output file in specified dir")
                 .arg(arg!(-'c' --"cdir" "Place output zip in current dir").action(ArgAction::SetTrue))
+                .arg(arg!(-'l' --"level" <LEVEL> "Compress using a specified compression level between 1 and 9").action(ArgAction::Set).value_parser(0..=9))
                 .arg(arg!([DIRPATH] "path of the directory to compress").required(true).value_parser(clap::value_parser!(PathBuf)))
                 .arg(arg!([OUTPUTDIR] "output directory [defaults: file dir]").value_parser(clap::value_parser!(PathBuf))),
         )

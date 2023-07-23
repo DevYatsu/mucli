@@ -29,14 +29,17 @@ pub fn compress_command(sub_matches: &ArgMatches) {
             let dir_name = source_dir.file_name().unwrap();
             let output_file_name = format!("{}.zip", dir_name.to_string_lossy());
 
+            let compression_level = sub_matches.get_one::<i32>("level").copied();
+
             if let true = sub_matches.get_flag("cdir") {
                 match current_dir() {
                     Ok(current_dir) => {
-                        match create_zip(&source_dir, &current_dir.join(output_file_name)) {
+                        let output_path = current_dir.join(&output_file_name);
+                        match create_zip(&source_dir, &output_path, compression_level) {
                             Ok(_) => print_success!(
                                 "{:?} successfully compressed as {:?}",
                                 source_dir,
-                                current_dir
+                                output_path
                             ),
                             Err(e) => print_err!("(compress error): {}", e),
                         }
@@ -46,12 +49,13 @@ pub fn compress_command(sub_matches: &ArgMatches) {
                     }
                 }
             } else if let Some(output_dir) = sub_matches.get_one::<PathBuf>("OUTPUTDIR") {
+                let output_path = output_dir.join(output_file_name);
                 match output_dir.is_dir() {
-                    true => match create_zip(&source_dir, &output_dir.join(output_file_name)) {
+                    true => match create_zip(&source_dir, &output_path, compression_level) {
                         Ok(_) => print_success!(
                             "{:?} successfully compressed as {:?}",
                             source_dir,
-                            output_dir
+                            output_path
                         ),
                         Err(e) => print_err!("(compress error): {}", e),
                     },
@@ -60,11 +64,12 @@ pub fn compress_command(sub_matches: &ArgMatches) {
             } else {
                 match source_dir.parent() {
                     Some(parent_dir) => {
-                        match create_zip(&source_dir, &Path::new(parent_dir).join(output_file_name)) {
+                        let output_path = &Path::new(parent_dir).join(output_file_name);
+                        match create_zip(&source_dir, &output_path, compression_level) {
                             Ok(_) => print_success!(
                                 "{:?} successfully compressed as {:?}",
                                 source_dir,
-                                parent_dir
+                                output_path
                             ),
                             Err(e) => print_err!("(compress error): {}", e),
                         }
