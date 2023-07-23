@@ -96,10 +96,10 @@ async fn main() {
         )
         .subcommand(
             Command::new("compress")
-                .about("Compress the specified directory and place the output file in specified dir")
+                .about("Compress the specified file/directory and place the output file in specified dir")
                 .arg(arg!(-'c' --"cdir" "Place output zip in current dir").action(ArgAction::SetTrue))
-                .arg(arg!(-'l' --"level" <LEVEL> "Compress using a specified compression level between 1 and 9").action(ArgAction::Set).value_parser(0..=9))
-                .arg(arg!([DIRPATH] "path of the directory to compress").required(true).value_parser(clap::value_parser!(PathBuf)))
+                .arg(arg!(-'l' --"level" <LEVEL> "Compress using a specified compression level between 0 and 9").action(ArgAction::Set).value_parser(0..=9))
+                .arg(arg!([PATH] "path of the source to compress").required(true).value_parser(clap::value_parser!(PathBuf)))
                 .arg(arg!([OUTPUTDIR] "output directory [defaults: file dir]").value_parser(clap::value_parser!(PathBuf))),
         )
         .subcommand(
