@@ -28,7 +28,7 @@ pub fn compress_command(sub_matches: &ArgMatches) {
         let source_name = source_path.file_name().unwrap();
         let output_file_name = format!("{}.zip", source_name.to_string_lossy());
 
-        let compression_level = sub_matches.get_one::<i32>("level").copied();
+        let compression_level = sub_matches.get_one::<i64>("level").copied().map(|val| val as i32);
 
         if let true = sub_matches.get_flag("cdir") {
             match current_dir() {
