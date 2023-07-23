@@ -17,3 +17,4 @@ rand = "0.8.5"
 reqwest = "0.11.18"
 simplecrypt = "1.0.2"
 tokio = { version = "1.29.1", features = ["full"] } 
+zip = "0.6.6"
