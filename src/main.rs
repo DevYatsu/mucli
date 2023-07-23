@@ -97,14 +97,8 @@ async fn main() {
         .subcommand(
             Command::new("compress")
                 .about("Compress the specified file and place the output file in specified dir")
-                .groups([
-                    ArgGroup::new("encrypt_actions")
-                        .required(false)
-                        .args(["cdir", "sfile"]),                    
-                ])
                 .arg(arg!(-'c' --"cdir" "Place output file in current dir").action(ArgAction::SetTrue))
-                .arg(arg!(-'s' --"sfile" "Select target file as output file").action(ArgAction::SetTrue))
-                .arg(arg!([FILEPATH] "file path of the target file").value_parser(clap::value_parser!(PathBuf)))
+                .arg(arg!([DIRPATH] "path of the directory to compress").value_parser(clap::value_parser!(PathBuf)))
                 .arg(arg!([OUTPUTDIR] "output directory [defaults: file dir]").value_parser(clap::value_parser!(PathBuf))),
         )
         .subcommand(

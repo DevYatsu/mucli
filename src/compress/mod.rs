@@ -1,6 +1,11 @@
+use std::{
+    io::Error,
+    path::{Path, PathBuf},
+};
+
 use clap::ArgMatches;
-use std::io::{Error, Write};
-use zip::{result::ZipError, write::FileOptions};
+use zip::result::ZipError;
+use zip_extensions::write::zip_create_from_directory;
 
 use custom_error::custom_error;
 
@@ -11,21 +16,11 @@ custom_error! { CompressionError
 }
 
 pub fn compress_command(sub_matches: &ArgMatches) {
-    write_file("test.txt").unwrap()
+    create_zip(&Path::new("test").to_path_buf(), &Path::new("test2.zip").to_path_buf()).unwrap();
 }
 
-fn write_file(name: &str) -> Result<(), CompressionError> {
-    // We use a buffer here, though you'd normally use a `File`
-    let mut buf = [0; 65536];
-    let mut zip = zip::ZipWriter::new(std::io::Cursor::new(&mut buf[..]));
+fn create_zip(source_path: &PathBuf, output_path: &PathBuf) -> Result<(), CompressionError> {
+    zip_create_from_directory(&output_path, &source_path).unwrap();
 
-    let options =
-        zip::write::FileOptions::default().compression_method(zip::CompressionMethod::Stored);
-    zip.start_file(name, options)?;
-    zip.write(b"Hello, World!")?;
-
-    // Apply the changes you've made.
-    // Dropping the `ZipWriter` will have the same effect, but may silently fail
-    zip.finish()?;
     Ok(())
 }
