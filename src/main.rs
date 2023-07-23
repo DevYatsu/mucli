@@ -1,8 +1,14 @@
+mod copy;
 mod encryption;
+mod r#move;
 mod password;
+mod rename;
 mod update;
 mod utils;
 
+use crate::copy::copy;
+use crate::r#move::mv;
+use crate::rename::rename;
 use crate::utils::config_interact::Config;
 use crate::{
     encryption::{decrypt_file, encrypt_file, encrypt_file_x, purge_encryption_keys},
@@ -83,6 +89,24 @@ async fn main() {
                 .arg(arg!(-'e' --"entirely" "Entirely decrypt target file").action(ArgAction::SetTrue))
                 .arg(arg!([FILEPATH] "file path of the target file").required(true).value_parser(clap::value_parser!(PathBuf)))
                 .arg(arg!([OUTPUTDIR] "output directory [defaults: file dir]").value_parser(clap::value_parser!(PathBuf))),
+        )
+        .subcommand(
+            Command::new("rename")
+                .about("Rename a file as specified")
+                .arg(arg!([FILEPATH] "file path of the target file").required(true).value_parser(clap::value_parser!(PathBuf)))
+                .arg(arg!([NAME] "new file name").required(true).value_parser(clap::value_parser!(PathBuf)))
+        )
+        .subcommand(
+            Command::new("copy")
+                .about("Copy a file content into another existing or non-existing file or into a directory")
+                .arg(arg!([FILEPATH] "file path of the target file").required(true).value_parser(clap::value_parser!(PathBuf)))
+                .arg(arg!([TARGET] "new file directory").required(true).value_parser(clap::value_parser!(PathBuf)))
+        )
+        .subcommand(
+            Command::new("move")
+                .about("Move a file into a directory")
+                .arg(arg!([FILEPATH] "file path of the target file").required(true).value_parser(clap::value_parser!(PathBuf)))
+                .arg(arg!([DIR] "target directory").required(true).value_parser(clap::value_parser!(PathBuf)))
         )
         .subcommand(
             Command::new("update")
@@ -744,6 +768,42 @@ async fn main() {
             //     }
             //     Err(e) => print_err!("{}", e),
             // };
+        }
+        Some(("rename", sub_matches)) => {
+            if let Some(filepath) = sub_matches.get_one::<PathBuf>("FILEPATH") {
+                if let Some(new_name) = sub_matches.get_one::<PathBuf>("NAME") {
+                    match rename(filepath, new_name) {
+                        Ok(_) => {
+                            print_success!("{:?} renamed {:?} successfully", filepath, new_name)
+                        }
+                        Err(e) => print_err!("(renaming failed): {}", e),
+                    }
+                }
+            }
+        }
+        Some(("copy", sub_matches)) => {
+            if let Some(filepath) = sub_matches.get_one::<PathBuf>("FILEPATH") {
+                if let Some(target) = sub_matches.get_one::<PathBuf>("TARGET") {
+                    match copy(filepath, target) {
+                        Ok(_) => {
+                            print_success!("{:?} was copied in {:?} successfully", filepath, target)
+                        }
+                        Err(e) => print_err!("(copy failed): {}", e),
+                    }
+                }
+            }
+        }
+        Some(("move", sub_matches)) => {
+            if let Some(filepath) = sub_matches.get_one::<PathBuf>("FILEPATH") {
+                if let Some(dir) = sub_matches.get_one::<PathBuf>("DIR") {
+                    match mv(filepath, dir) {
+                        Ok(_) => {
+                            print_success!("{:?} was moved in {:?} successfully", filepath, dir)
+                        }
+                        Err(e) => print_err!("(operation failure): {}", e),
+                    }
+                }
+            }
         }
         _ => unreachable!("Exhausted list of subcommands and subcommand_required prevents `None`"),
     }

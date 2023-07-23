@@ -124,7 +124,6 @@ pub fn generate_encryption_key(length: usize) -> Vec<u8> {
     key
 }
 
-
 pub fn latest_encryption_version() -> Result<u32, EncryptionError> {
     let mut filtered_lines: Vec<u32> = config!()?.filter_map_lines(|line| {
         if line.starts_with(&format!("{}=", ENCRYPTION_KEYWORD)) {
@@ -166,7 +165,6 @@ pub fn decrypted_file_path(file_path: &Path, current_dir: &Path) -> PathBuf {
 
     output_path
 }
-
 
 pub fn init_encryption_key() -> Result<(), EncryptionError> {
     match config!()?.key_exists(ENCRYPTION_KEYWORD) {
@@ -233,7 +231,6 @@ pub fn purge_encryption_keys() -> Result<(), EncryptionError> {
     Ok(())
 }
 
-
 fn set_encryption_key() -> Result<(), EncryptionError> {
     let version = match latest_encryption_version() {
         Ok(val) => val + 1,
@@ -296,4 +293,5 @@ fn nth_encription_key(index: usize) -> Result<Vec<u8>, EncryptionError> {
         Ok(key.clone())
     } else {
         Err(EncryptionError::KeyNotExist)
-    }}
+    }
+}
