@@ -78,16 +78,16 @@ mucli decrypt -e /path/to/encrypted_file
 ```
 ## Ideas of commands to implement in the future
 
-- "network": Implement a command to display network-related information, such as IP address, network interfaces, and connectivity status.
-- "processes": Create a command to view running processes and manage them, allowing users to terminate or prioritize tasks.
-- "system-info": Develop a command to provide essential system information, including CPU, memory, disk usage, and OS details.
-- "history": Implement a command to show the command history, allowing users to recall and re-execute previous commands.
-- "compress": Implement a command to compress files or directories into various archive formats like ZIP or TAR.
-- "extract": Create a command to extract files from compressed archives, supporting popular formats like ZIP, TAR, GZ, etc.
 - "copy": Create a command to copy files or directories from one location to another, preserving their attributes and permissions.
 - "rename": Create a command to rename files or directories in bulk, allowing users to provide search patterns and replacement strings.
 - "move": Develop a command to move files or directories to a new location, with the option to overwrite existing files.
+- "compress": Implement a command to compress files or directories into various archive formats like ZIP or TAR.
+- "extract": Create a command to extract files from compressed archives, supporting popular formats like ZIP, TAR, GZ, etc.
+- "history": Implement a command to show the command history, allowing users to recall and re-execute previous commands.
 - "timer": Develop a command-line timer or stopwatch.
+- "network": Implement a command to display network-related information, such as IP address, network interfaces, and connectivity status.
+- "processes": Create a command to view running processes and manage them, allowing users to terminate or prioritize tasks.
+- "system-info": Develop a command to provide essential system information, including CPU, memory, disk usage, and OS details.
 - "currency": Create a command to convert between different currencies, using up-to-date exchange rates.
 - "dictionary": Develop a command-line dictionary tool to look up word definitions, synonyms, and antonyms.
 - "translator": Implement a command to translate text between different languages using popular translation APIs.
