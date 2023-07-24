@@ -2,7 +2,7 @@ mod annex;
 
 use std::io::{stdout, Write};
 use termion::color;
-use termion::input::{MouseTerminal, };
+use termion::input::MouseTerminal;
 use termion::raw::IntoRawMode;
 
 use self::annex::{break_key_event, start_timer};
