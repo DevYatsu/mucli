@@ -9,11 +9,11 @@ use simplecrypt::{decrypt, encrypt, DecryptionError};
 
 use crate::encryption::EncryptionError;
 use crate::utils::config_interact::vec_as_string;
-use crate::utils::{generate_encryption_key, get_config_path};
 use crate::utils::{
     config_interact::{string_as_vec, Config},
     GenericError,
 };
+use crate::utils::{generate_encryption_key, get_config_path};
 use crate::{config, config_line, file_truncate};
 
 extern crate custom_error;

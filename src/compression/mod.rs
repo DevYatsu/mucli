@@ -14,6 +14,8 @@ use custom_error::custom_error;
 
 use crate::{print_err, print_success};
 
+use self::annex::extract_zip;
+
 custom_error! {pub CompressionError
     Io{source: Error} = "{source}",
     Zip{source: ZipError} = "{source}",
@@ -76,6 +78,52 @@ pub fn compress_command(sub_matches: &ArgMatches) {
                         Err(e) => print_err!("(compress error): {}", e),
                     }
                 }
+                None => print_err!("Failed to get source directory parent directory"),
+            }
+        }
+    }
+}
+
+pub fn extract_command(sub_matches: &ArgMatches) {
+    if let Some(source_path) = sub_matches.get_one::<PathBuf>("PATH") {
+        let source_path = Path::new(source_path).to_path_buf();
+
+        if let true = sub_matches.get_flag("cdir") {
+            match current_dir() {
+                Ok(current_dir) => match extract_zip(&source_path, &current_dir) {
+                    Ok(_) => print_success!(
+                        "{:?} successfully extracted in {:?}",
+                        source_path,
+                        current_dir
+                    ),
+                    Err(e) => print_err!("(extraction error): {}", e),
+                },
+                Err(error) => {
+                    print_err!("Failed to get current directory: {}", error)
+                }
+            }
+        } else if let Some(output_dir) = sub_matches.get_one::<PathBuf>("OUTPUTDIR") {
+            match output_dir.is_dir() {
+                true => match extract_zip(&source_path, &output_dir) {
+                    Ok(_) => print_success!(
+                        "{:?} successfully extracted in {:?}",
+                        source_path,
+                        output_dir
+                    ),
+                    Err(e) => print_err!("(extraction error): {}", e),
+                },
+                false => print_err!("Failed to get {:?} directory", output_dir),
+            }
+        } else {
+            match source_path.parent() {
+                Some(parent_dir) => match extract_zip(&source_path, &parent_dir.to_path_buf()) {
+                    Ok(_) => print_success!(
+                        "{:?} successfully extracted in {:?}",
+                        source_path,
+                        parent_dir
+                    ),
+                    Err(e) => print_err!("(extraction error): {}", e),
+                },
                 None => print_err!("Failed to get source directory parent directory"),
             }
         }

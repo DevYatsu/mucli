@@ -14,7 +14,7 @@ macro_rules! config {
     () => {{
         use crate::Config;
 
-        Config::new()  
+        Config::new()
     }};
 }
 

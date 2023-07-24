@@ -15,6 +15,7 @@ use crate::update::update_command;
 use crate::utils::config_interact::Config;
 use clap::{arg, command, ArgAction, ArgGroup, Command};
 
+use compression::extract_command;
 use encryption::{decrypt_command, encrypt_command};
 use password::password_command;
 use std::path::PathBuf;
@@ -109,6 +110,18 @@ async fn main() {
                 .arg(arg!([OUTPUTDIR] "output directory [defaults: file dir]").value_parser(clap::value_parser!(PathBuf))),
         )
         .subcommand(
+            Command::new("extract")
+                .about("Extract the specified zip and place the output extract in specified dir")
+                .group(
+                    ArgGroup::new("compress_actions")
+                        .required(false)
+                        .args(["cdir", "OUTPUTDIR"])
+                )
+                .arg(arg!(-'c' --"cdir" "Place output extract in current dir").action(ArgAction::SetTrue))
+                .arg(arg!([PATH] "path of the zip to extract").required(true).value_parser(clap::value_parser!(PathBuf)))
+                .arg(arg!([OUTPUTDIR] "output directory [defaults: file dir]").value_parser(clap::value_parser!(PathBuf))),
+        )
+        .subcommand(
             Command::new("update")
                 .about("Check if a new update of mucli is available (coming soon)")
         ).get_matches();
@@ -122,6 +135,7 @@ async fn main() {
         Some(("copy", sub_matches)) => copy_command(sub_matches),
         Some(("move", sub_matches)) => move_command(sub_matches),
         Some(("compress", sub_matches)) => compress_command(sub_matches),
+        Some(("extract", sub_matches)) => extract_command(sub_matches),
         _ => unreachable!("Exhausted list of subcommands and subcommand_required prevents `None`"),
     }
 }
