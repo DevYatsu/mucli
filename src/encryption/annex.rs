@@ -3,7 +3,6 @@ use crate::utils::generate_encryption_key;
 use crate::{config, config_line, crypted_file};
 use indicatif::ProgressBar;
 use simplecrypt::{decrypt, encrypt};
-use std::io::Write;
 use std::path::{Path, PathBuf};
 use std::thread;
 use std::time::Duration;
