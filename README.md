@@ -76,12 +76,59 @@ mucli decrypt -s /path/to/encrypted_file
 # useful when crypted several times
 mucli decrypt -e /path/to/encrypted_file
 ```
+
+### Rename
+
+Command to rename a file.
+
+```bash
+mucli rename [FILEPATH] [NAME]
+```
+
+### Copy
+
+Command to copy a file's content into another existing or non-existing file or into a directory.
+
+```bash
+mucli copy [FILEPATH] [TARGET]
+```
+
+### Move
+
+Command to move a file into a directory.
+
+```bash
+mucli move [FILEPATH] [DIR]
+```
+
+### Compress
+
+Command to compress the specified file/directory and place the output file in the specified directory.
+
+```bash
+# Compress the file/directory and place the output in the same directory as the source
+mucli compress [PATH]
+
+# Compress the file/directory and place the output in the specified directory
+mucli compress [PATH] [OUTPUTDIR]
+
+# Compress the file/directory and place the output in the current directory
+mucli compress -c [PATH]
+
+# Compress with a specified compression level (0 to 9)
+mucli compress -l [LEVEL] [PATH]
+```
+
+### Update
+
+Command to check if a new update of mucli is available (coming soon).
+
+```bash
+mucli update
+```
+
 ## Ideas of commands to implement in the future
 
-- "copy": Create a command to copy files or directories from one location to another, preserving their attributes and permissions.
-- "rename": Create a command to rename files or directories in bulk, allowing users to provide search patterns and replacement strings.
-- "move": Develop a command to move files or directories to a new location, with the option to overwrite existing files.
-- "compress": Implement a command to compress files or directories into various archive formats like ZIP or TAR.
 - "extract": Create a command to extract files from compressed archives, supporting popular formats like ZIP, TAR, GZ, etc.
 - "history": Implement a command to show the command history, allowing users to recall and re-execute previous commands.
 - "timer": Develop a command-line timer or stopwatch.
