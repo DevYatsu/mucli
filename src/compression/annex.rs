@@ -34,6 +34,8 @@ pub fn create_zip(
                 let entry = entry?;
                 let entry_path = entry.path();
                 let entry_name = entry_path.to_string_lossy().to_string();
+        println!("{}", entry_path.display());
+        println!("{}", source_path.display());
 
                 if entry_path.is_file() {
                     let (_, content) = file_as_bytes!(&entry_path);
@@ -42,7 +44,7 @@ pub fn create_zip(
                         let path = entry_path;
                         println!("File {i} comment: {:?}", path);
                     }
-                    
+
                     zip.start_file(entry_name, options)?;
                     zip.write(&content)?;
                 } else if entry_path.is_dir() {
@@ -72,13 +74,14 @@ pub fn extract_zip(source_path: &PathBuf, output_dir: &PathBuf) -> Result<(), Co
     let source_file = File::open(source_path)?;
 
     let mut archive = zip::ZipArchive::new(source_file)?;
-
     for i in 0..archive.len() {
-        let mut file = archive.by_index(i).unwrap();
+        let mut file = archive.by_index(i)?;
         let outpath = match file.enclosed_name() {
             Some(path) => path.to_owned(),
             None => continue,
         };
+        println!("{}", outpath.display());
+        println!("{}", source_path.display());
         let outpath = output_dir.join(outpath);
 
         {
@@ -90,7 +93,7 @@ pub fn extract_zip(source_path: &PathBuf, output_dir: &PathBuf) -> Result<(), Co
 
         if (*file.name()).ends_with('/') {
             println!("File {} extracted to \"{}\"", i, outpath.display());
-            fs::create_dir_all(&outpath).unwrap();
+            fs::create_dir_all(&outpath)?;
         } else {
             println!(
                 "File {} extracted to \"{}\" ({} bytes)",
@@ -100,11 +103,11 @@ pub fn extract_zip(source_path: &PathBuf, output_dir: &PathBuf) -> Result<(), Co
             );
             if let Some(p) = outpath.parent() {
                 if !p.exists() {
-                    fs::create_dir_all(p).unwrap();
+                    fs::create_dir_all(p)?;
                 }
             }
-            let mut outfile = fs::File::create(&outpath).unwrap();
-            io::copy(&mut file, &mut outfile).unwrap();
+            let mut outfile = fs::File::create(&outpath)?;
+            io::copy(&mut file, &mut outfile)?;
         }
 
         // Get and Set permissions
@@ -113,7 +116,7 @@ pub fn extract_zip(source_path: &PathBuf, output_dir: &PathBuf) -> Result<(), Co
             use std::os::unix::fs::PermissionsExt;
 
             if let Some(mode) = file.unix_mode() {
-                fs::set_permissions(&outpath, fs::Permissions::from_mode(mode)).unwrap();
+                fs::set_permissions(&outpath, fs::Permissions::from_mode(mode))?;
             }
         }
     }

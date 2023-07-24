@@ -1,6 +1,6 @@
 mod annex;
 
-use crate::compression::annex::create_zip;
+use crate::{compression::annex::create_zip, print_solution};
 use std::{
     env::current_dir,
     fs,
@@ -27,6 +27,12 @@ custom_error! {pub CompressionError
 pub fn compress_command(sub_matches: &ArgMatches) {
     if let Some(source_path) = sub_matches.get_one::<PathBuf>("PATH") {
         let source_path = PathBuf::from(source_path);
+
+        if source_path == PathBuf::from(".") {
+            print_err!("Cannot compress directory when inside of it");
+            print_solution!("Use \"cd ..\" and try again");
+            return;
+        }
 
         let source_name = match fs::canonicalize(&source_path) {
             Ok(p) => p
