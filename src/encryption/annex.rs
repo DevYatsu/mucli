@@ -129,8 +129,6 @@ pub fn init_new_encryption_key() -> Result<(), EncryptionError> {
         Ok(val) => {
             if let true = val {
                 set_encryption_key()?
-            } else {
-                return Err(EncryptionError::KeyUpdateFailed);
             }
             Ok(())
         }
@@ -173,7 +171,7 @@ pub fn purge_encryption_keys() -> Result<(), EncryptionError> {
         })?
         .join("\n");
 
-    config.file.write_all(filtered_content.as_bytes())?;
+    config.overwrite_content(filtered_content.as_bytes())?;
     Ok(())
 }
 

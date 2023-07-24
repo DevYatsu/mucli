@@ -37,6 +37,17 @@ impl Config {
 
         Ok(Self { file, buffer })
     }
+    pub fn overwrite_content(&mut self, new_content: &[u8]) -> Result<(), GenericError> {
+        self.file.seek(SeekFrom::Start(0))?;
+
+        // Write the modified contents to the file
+        self.file.write_all(new_content)?;
+
+        // Truncate any remaining content after the new data
+        self.file.set_len(new_content.len() as u64)?;
+
+        Ok(())
+    }
 
     pub fn set_key(&mut self, new_line: String) -> Result<(), GenericError> {
         writeln!(self.file, "{}", new_line)?;
@@ -55,14 +66,7 @@ impl Config {
             .collect::<Vec<&str>>()
             .join("\n");
 
-        // Reset the file pointer to the beginning
-        self.file.seek(SeekFrom::Start(0))?;
-
-        // Write the modified contents to the file
-        self.file.write_all(modified_buffer.as_bytes())?;
-
-        // Truncate any remaining content after the new data
-        self.file.set_len(modified_buffer.len() as u64)?;
+        self.overwrite_content(&modified_buffer.as_bytes())?;
 
         Ok(())
     }
