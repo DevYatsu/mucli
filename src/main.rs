@@ -99,7 +99,7 @@ async fn main() {
                 .arg(arg!([DIR] "target directory [defaults: current dir]").value_parser(clap::value_parser!(PathBuf)))
         )
         .subcommand(
-            Command::new("compress")
+            Command::new("zip")
                 .about("Compress the specified file/directory and place the output file in specified dir")
                 .group(
                     ArgGroup::new("compress_actions")
@@ -112,7 +112,7 @@ async fn main() {
                 .arg(arg!([OUTPUTDIR] "output directory [defaults: file dir]").value_parser(clap::value_parser!(PathBuf))),
         )
         .subcommand(
-            Command::new("extract")
+            Command::new("unzip")
                 .about("Extract the specified zip and place the output extract in specified dir")
                 .group(
                     ArgGroup::new("compress_actions")
@@ -140,8 +140,8 @@ async fn main() {
         Some(("rename", sub_matches)) => rename_command(sub_matches),
         Some(("cp", sub_matches)) => copy_command(sub_matches),
         Some(("mv", sub_matches)) => move_command(sub_matches),
-        Some(("compress", sub_matches)) => compress_command(sub_matches),
-        Some(("extract", sub_matches)) => extract_command(sub_matches),
+        Some(("zip", sub_matches)) => compress_command(sub_matches),
+        Some(("unzip", sub_matches)) => extract_command(sub_matches),
         Some(("timer", _)) => timer_command(),
         _ => unreachable!("Exhausted list of subcommands and subcommand_required prevents `None`"),
     }

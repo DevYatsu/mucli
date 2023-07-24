@@ -14,10 +14,10 @@ esac
 
 # Define the installation file based on the operating system
 case "$(uname -s)" in
-    Linux*)     INSTALL_FILE="/mucli_linux" ;;  # Linux
-    Darwin*)    INSTALL_FILE="/mucli_macos" ;;  # macOS
-    CYGWIN*)    INSTALL_FILE="/mucli_windows" ;;  # Cygwin (Windows-like environment)
-    MINGW*)     INSTALL_FILE="/mucli_windows" ;;  # MinGW (Windows-like environment)
+    Linux*)     INSTALL_FILE="./mucli_linux" ;;  # Linux
+    Darwin*)    INSTALL_FILE="./mucli_macos" ;;  # macOS
+    CYGWIN*)    INSTALL_FILE="./mucli_windows" ;;  # Cygwin (Windows-like environment)
+    MINGW*)     INSTALL_FILE="./mucli_windows" ;;  # MinGW (Windows-like environment)
     *)
         echo "Unsupported operating system."
         exit 1
@@ -25,7 +25,7 @@ case "$(uname -s)" in
 esac
 
 # Copy "mucli" to the installation directory
-cp .$INSTALL_FILE $INSTALL_DIR/mucli
+cp $INSTALL_FILE $INSTALL_DIR/mucli
 
 # Provide executable permissions to "mucli" (not needed on Windows)
 if [ "$(uname -s)" != "MINGW"* ]; then
