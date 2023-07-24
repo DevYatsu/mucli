@@ -1,5 +1,4 @@
 const PASSWORD_KEYWORD: &str = "MUCLI_PASSWORD";
-const CONFIG_FILE: &str = "config.txt";
 const PASSWORD_KEY_KEYWORD: &str = "MUCLI_KEY_PASSWORD";
 const QUESTION_KEYWORD: &str = "MUCLI_QUESTION";
 
@@ -10,7 +9,7 @@ use simplecrypt::{decrypt, encrypt, DecryptionError};
 
 use crate::encryption::EncryptionError;
 use crate::utils::config_interact::vec_as_string;
-use crate::utils::generate_encryption_key;
+use crate::utils::{generate_encryption_key, get_config_path};
 use crate::utils::{
     config_interact::{string_as_vec, Config},
     GenericError,
@@ -93,7 +92,7 @@ pub fn remove_password_recovery_question(index: usize) -> Result<(), PasswordErr
             None
         }
     })?;
-    let (mut file, _) = file_truncate!(CONFIG_FILE);
+    let (mut file, _) = file_truncate!(get_config_path()?);
 
     file.write_all(lines.join("\n").as_bytes())?;
 

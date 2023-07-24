@@ -7,14 +7,14 @@ use std::{
 use crate::parse_config_line;
 
 use super::GenericError;
+use crate::utils::get_config_path;
 
 #[macro_export]
 macro_rules! config {
     () => {{
         use crate::Config;
-        use std::path::Path;
-        const CONFIG_FILE: &str = "config.txt";
-        Config::new(&Path::new(CONFIG_FILE).to_path_buf())
+
+        Config::new()  
     }};
 }
 
@@ -23,7 +23,9 @@ pub struct Config {
     buffer: String,
 }
 impl Config {
-    pub fn new(path: &PathBuf) -> Result<Self, GenericError> {
+    pub fn new() -> Result<Self, GenericError> {
+        let path = get_config_path()?;
+
         let mut file = std::fs::OpenOptions::new()
             .read(true)
             .write(true)
