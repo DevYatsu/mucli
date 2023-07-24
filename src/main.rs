@@ -4,6 +4,7 @@ mod encryption;
 mod r#move;
 mod password;
 mod rename;
+mod shell;
 mod timer;
 mod update;
 mod utils;
@@ -12,6 +13,7 @@ use crate::compression::compress_command;
 use crate::copy::copy_command;
 use crate::r#move::move_command;
 use crate::rename::rename_command;
+use crate::shell::shell_command;
 use crate::timer::timer_command;
 use crate::update::update_command;
 use crate::utils::config_interact::Config;
@@ -124,6 +126,11 @@ async fn main() {
                 .arg(arg!([OUTPUTDIR] "output directory [defaults: file dir]").value_parser(clap::value_parser!(PathBuf))),
         )
         .subcommand(
+            Command::new("shell")
+                .about("Execute a shell script")
+                .arg(arg!([FILEPATH] "path of the script").required(true).value_parser(clap::value_parser!(PathBuf)))
+        )
+        .subcommand(
             Command::new("timer")
                 .about("Just a simple timer")
         )
@@ -143,6 +150,7 @@ async fn main() {
         Some(("zip", sub_matches)) => compress_command(sub_matches),
         Some(("unzip", sub_matches)) => extract_command(sub_matches),
         Some(("timer", _)) => timer_command(),
+        Some(("shell", sub_matches)) => shell_command(sub_matches),
         _ => unreachable!("Exhausted list of subcommands and subcommand_required prevents `None`"),
     }
 }

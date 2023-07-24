@@ -34,8 +34,8 @@ pub fn create_zip(
                 let entry = entry?;
                 let entry_path = entry.path();
                 let entry_name = entry_path.to_string_lossy().to_string();
-        println!("{}", entry_path.display());
-        println!("{}", source_path.display());
+                println!("{}", entry_path.display());
+                println!("{}", source_path.display());
 
                 if entry_path.is_file() {
                     let (_, content) = file_as_bytes!(&entry_path);

@@ -77,7 +77,7 @@ pub fn compress_command(sub_matches: &ArgMatches) {
                     Ok(_) => print_success!(
                         "{} successfully compressed as {}",
                         source_path.display(),
-                            output_path.display()
+                        output_path.display()
                     ),
                     Err(e) => print_err!("(compress error): {}", e),
                 },
@@ -104,6 +104,11 @@ pub fn compress_command(sub_matches: &ArgMatches) {
 
 pub fn extract_command(sub_matches: &ArgMatches) {
     if let Some(source_path) = sub_matches.get_one::<PathBuf>("PATH") {
+        if !source_path.is_file() {
+            print_err!("Source path must be a file!");
+            return;
+        }
+
         let source_path = Path::new(source_path).to_path_buf();
         let source_path = match fs::canonicalize(&source_path) {
             Ok(p) => p,
@@ -112,7 +117,7 @@ pub fn extract_command(sub_matches: &ArgMatches) {
                 return;
             }
         };
-        
+
         if let true = sub_matches.get_flag("cdir") {
             match current_dir() {
                 Ok(current_dir) => match extract_zip(&source_path, &current_dir) {
