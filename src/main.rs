@@ -4,6 +4,7 @@ mod encryption;
 mod r#move;
 mod password;
 mod rename;
+mod timer;
 mod update;
 mod utils;
 
@@ -11,6 +12,7 @@ use crate::compression::compress_command;
 use crate::copy::copy_command;
 use crate::r#move::move_command;
 use crate::rename::rename_command;
+use crate::timer::timer_command;
 use crate::update::update_command;
 use crate::utils::config_interact::Config;
 use clap::{arg, command, ArgAction, ArgGroup, Command};
@@ -122,6 +124,10 @@ async fn main() {
                 .arg(arg!([OUTPUTDIR] "output directory [defaults: file dir]").value_parser(clap::value_parser!(PathBuf))),
         )
         .subcommand(
+            Command::new("timer")
+                .about("Just a simple timer")
+        )
+        .subcommand(
             Command::new("update")
                 .about("Check if a new update of mucli is available (coming soon)")
         ).get_matches();
@@ -136,6 +142,7 @@ async fn main() {
         Some(("mv", sub_matches)) => move_command(sub_matches),
         Some(("compress", sub_matches)) => compress_command(sub_matches),
         Some(("extract", sub_matches)) => extract_command(sub_matches),
+        Some(("timer", _)) => timer_command(),
         _ => unreachable!("Exhausted list of subcommands and subcommand_required prevents `None`"),
     }
 }
