@@ -2,7 +2,7 @@ mod annex;
 
 use dialoguer::{theme::ColorfulTheme, Confirm};
 
-use crate::{print_err, print_future_update, print_success, VERSION};
+use crate::{print_err, print_info, print_success, VERSION};
 
 use self::annex::{can_update, get_latest_release_version};
 
@@ -24,7 +24,7 @@ pub async fn update_command() {
                     return;
                 }
                 //update version
-                print_future_update!("Feature coming soon!");
+                print_info!("Feature coming soon!");
             }
         }
         Err(e) => print_err!("{}", e),

@@ -13,7 +13,7 @@ custom_error! {pub GenericError
     Format{source: ParseIntError} = "{source}",
     KeyNotFound{key: String} = "Key \"{key}\" not found in config file.",
     Unknown = "unknown error",
-    Custom{message: String} = "{message}"
+    Custom{message: String} = "{message}",
 }
 
 pub fn generate_encryption_key(length: usize) -> Vec<u8> {

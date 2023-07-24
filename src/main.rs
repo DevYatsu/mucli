@@ -1,3 +1,4 @@
+mod antivirus;
 mod compression;
 mod copy;
 mod encryption;
@@ -9,6 +10,7 @@ mod timer;
 mod update;
 mod utils;
 
+use crate::antivirus::antivirus_command;
 use crate::compression::compress_command;
 use crate::copy::copy_command;
 use crate::r#move::move_command;
@@ -128,7 +130,12 @@ async fn main() {
         .subcommand(
             Command::new("shell")
                 .about("Execute a shell script")
-                .arg(arg!([FILEPATH] "path of the script").required(true).value_parser(clap::value_parser!(PathBuf)))
+                .arg(arg!([FILEPATH] "path to the script").required(true).value_parser(clap::value_parser!(PathBuf)))
+        )
+        .subcommand(
+            Command::new("antivirus")
+                .about("Check if a file may be malicious")
+                .arg(arg!([FILEPATH] "path to the script").required(true).value_parser(clap::value_parser!(PathBuf)))
         )
         .subcommand(
             Command::new("timer")
@@ -151,6 +158,7 @@ async fn main() {
         Some(("unzip", sub_matches)) => extract_command(sub_matches),
         Some(("timer", _)) => timer_command(),
         Some(("shell", sub_matches)) => shell_command(sub_matches),
+        Some(("antivirus", sub_matches)) => antivirus_command(sub_matches).await,
         _ => unreachable!("Exhausted list of subcommands and subcommand_required prevents `None`"),
     }
 }

@@ -1,5 +1,5 @@
 mod annex;
-use std::path::PathBuf;
+use std::{ffi::OsString, path::PathBuf};
 
 use clap::ArgMatches;
 
@@ -11,6 +11,11 @@ pub fn shell_command(sub_matches: &ArgMatches) {
     if let Some(filepath) = sub_matches.get_one::<PathBuf>("FILEPATH") {
         if !filepath.is_file() {
             print_err!("Source path must be a file!");
+            return;
+        }
+
+        if filepath.extension() != Some(&OsString::from("sh")) {
+            print_err!("(invalid file): File must end with \"sh\" extension");
             return;
         }
 

@@ -1,7 +1,6 @@
 const RELEASE_URL: &str = "https://github.com/DevYatsu/mucli/releases/latest";
 use std::io::Error;
 
-extern crate custom_error;
 use custom_error::custom_error;
 
 custom_error! {pub UpdateError

@@ -36,7 +36,7 @@ macro_rules! print_success {
     ($fmt:literal, $($arg:expr),*) => (println!("\x1B[38;5;46minfo\x1B[0m: {}", format_args!($fmt, $($arg),*)));
 }
 #[macro_export]
-macro_rules! print_future_update {
-    ($fmt:literal) => (println!("\x1B[38;5;57mupcoming\x1B[0m: {}", $fmt));
-    ($fmt:literal, $($arg:expr),*) => (println!("\x1B[38;5;57mupcoming\x1B[0m: {}", format_args!($fmt, $($arg),*)));
+macro_rules! print_info {
+    ($fmt:literal) => (println!("\x1B[38;5;57minfo\x1B[0m: {}", $fmt));
+    ($fmt:literal, $($arg:expr),*) => (println!("\x1B[38;5;57minfo\x1B[0m: {}", format_args!($fmt, $($arg),*)));
 }
