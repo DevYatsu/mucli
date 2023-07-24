@@ -78,6 +78,7 @@ pub fn extract_zip(source_path: &PathBuf, output_dir: &PathBuf) -> Result<(), Co
             Some(path) => path.to_owned(),
             None => continue,
         };
+        let outpath = output_dir.join(outpath);
 
         {
             let comment = file.comment();

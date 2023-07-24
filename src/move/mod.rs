@@ -17,6 +17,13 @@ pub fn move_command(sub_matches: &ArgMatches) {
                 }
                 Err(e) => print_err!("(operation failure): {}", e),
             }
+        } else {
+            match mv(filepath, &PathBuf::from(".")) {
+                Ok(_) => {
+                    print_success!("{:?} was moved in current dir successfully", filepath)
+                }
+                Err(e) => print_err!("(operation failure): {}", e),
+            }
         }
     }
 }

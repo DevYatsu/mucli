@@ -1,7 +1,6 @@
 use std::{
     fs::File,
     io::{Read, Seek, SeekFrom, Write},
-    path::PathBuf,
 };
 
 use crate::parse_config_line;

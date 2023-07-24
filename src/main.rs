@@ -85,16 +85,16 @@ async fn main() {
                 .arg(arg!([NAME] "new file name").required(true).value_parser(clap::value_parser!(PathBuf)))
         )
         .subcommand(
-            Command::new("copy")
+            Command::new("cp")
                 .about("Copy a file content into another existing or non-existing file or into a directory")
                 .arg(arg!([FILEPATH] "file path of the target file").required(true).value_parser(clap::value_parser!(PathBuf)))
                 .arg(arg!([TARGET] "new file directory").required(true).value_parser(clap::value_parser!(PathBuf)))
         )
         .subcommand(
-            Command::new("move")
+            Command::new("mv")
                 .about("Move a file into a directory")
                 .arg(arg!([FILEPATH] "file path of the target file").required(true).value_parser(clap::value_parser!(PathBuf)))
-                .arg(arg!([DIR] "target directory").required(true).value_parser(clap::value_parser!(PathBuf)))
+                .arg(arg!([DIR] "target directory [defaults: current dir]").value_parser(clap::value_parser!(PathBuf)))
         )
         .subcommand(
             Command::new("compress")
@@ -132,8 +132,8 @@ async fn main() {
         Some(("password", sub_matches)) => password_command(sub_matches),
         Some(("update", _)) => update_command().await,
         Some(("rename", sub_matches)) => rename_command(sub_matches),
-        Some(("copy", sub_matches)) => copy_command(sub_matches),
-        Some(("move", sub_matches)) => move_command(sub_matches),
+        Some(("cp", sub_matches)) => copy_command(sub_matches),
+        Some(("mv", sub_matches)) => move_command(sub_matches),
         Some(("compress", sub_matches)) => compress_command(sub_matches),
         Some(("extract", sub_matches)) => extract_command(sub_matches),
         _ => unreachable!("Exhausted list of subcommands and subcommand_required prevents `None`"),
