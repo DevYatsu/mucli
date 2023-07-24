@@ -49,7 +49,7 @@ async fn main() {
                 .groups([
                     ArgGroup::new("encrypt_actions")
                         .required(false)
-                        .args(["ukey", "cdir", "sfile", "purge"]),                    
+                        .args(["ukey", "cdir", "sfile", "purge", "OUTPUTDIR"]),                    
                     ArgGroup::new("additional_actions")
                         .required(false)
                         .args(["times", "ukey", "purge"])
@@ -68,7 +68,7 @@ async fn main() {
                 .group(
                     ArgGroup::new("decrypt_actions")
                         .required(false)
-                        .args(["cdir", "sfile"]),
+                        .args(["cdir", "sfile", "OUTPUTDIR"]),
                 )
                 .arg(arg!(-'c' --"cdir" "Place output file in current dir").action(ArgAction::SetTrue))
                 .arg(arg!(-'s' --"sfile" "Select target file as output file").action(ArgAction::SetTrue))
@@ -97,6 +97,11 @@ async fn main() {
         .subcommand(
             Command::new("compress")
                 .about("Compress the specified file/directory and place the output file in specified dir")
+                .group(
+                    ArgGroup::new("compress_actions")
+                        .required(false)
+                        .args(["cdir", "OUTPUTDIR"])
+                )
                 .arg(arg!(-'c' --"cdir" "Place output zip in current dir").action(ArgAction::SetTrue))
                 .arg(arg!(-'l' --"level" <LEVEL> "Compress using a specified compression level between 0 and 9").action(ArgAction::Set).value_parser(0..=9))
                 .arg(arg!([PATH] "path of the source to compress").required(true).value_parser(clap::value_parser!(PathBuf)))
