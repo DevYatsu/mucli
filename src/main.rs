@@ -8,9 +8,10 @@ mod update;
 mod utils;
 
 use crate::compression::compress_command;
-use crate::copy::copy;
-use crate::r#move::mv;
-use crate::rename::rename;
+use crate::copy::copy_command;
+use crate::r#move::move_command;
+use crate::rename::rename_command;
+use crate::update::update_command;
 use crate::utils::config_interact::Config;
 use clap::{arg, command, ArgAction, ArgGroup, Command};
 
@@ -116,64 +117,10 @@ async fn main() {
         Some(("encrypt", sub_matches)) => encrypt_command(sub_matches),
         Some(("decrypt", sub_matches)) => decrypt_command(sub_matches),
         Some(("password", sub_matches)) => password_command(sub_matches),
-        Some(("update", _)) => {
-            print_future_update!("Command coming soon!");
-            return;
-            // match get_latest_release_version().await {
-            //     Ok(v) => {
-            //         print_success!("Latest release version is \"{}\"", v);
-            //         if can_update(VERSION, &v) {
-            //             print_success!("This version is superior to current version \"{}\"", v);
-            //             let confirmation = Confirm::with_theme(&ColorfulTheme::default())
-            //                 .with_prompt("Would you like to upgrade to the latest version?")
-            //                 .interact()
-            //                 .unwrap();
-
-            //             if !confirmation {
-            //                 return;
-            //             }
-            //             //update version
-            //         }
-            //     }
-            //     Err(e) => print_err!("{}", e),
-            // };
-        }
-        Some(("rename", sub_matches)) => {
-            if let Some(filepath) = sub_matches.get_one::<PathBuf>("FILEPATH") {
-                if let Some(new_name) = sub_matches.get_one::<PathBuf>("NAME") {
-                    match rename(filepath, new_name) {
-                        Ok(_) => {
-                            print_success!("{:?} renamed {:?} successfully", filepath, new_name)
-                        }
-                        Err(e) => print_err!("(renaming failed): {}", e),
-                    }
-                }
-            }
-        }
-        Some(("copy", sub_matches)) => {
-            if let Some(filepath) = sub_matches.get_one::<PathBuf>("FILEPATH") {
-                if let Some(target) = sub_matches.get_one::<PathBuf>("TARGET") {
-                    match copy(filepath, target) {
-                        Ok(_) => {
-                            print_success!("{:?} was copied in {:?} successfully", filepath, target)
-                        }
-                        Err(e) => print_err!("(copy failed): {}", e),
-                    }
-                }
-            }
-        }
-        Some(("move", sub_matches)) => {
-            if let Some(filepath) = sub_matches.get_one::<PathBuf>("FILEPATH") {
-                if let Some(dir) = sub_matches.get_one::<PathBuf>("DIR") {
-                    match mv(filepath, dir) {
-                        Ok(_) => {
-                            print_success!("{:?} was moved in {:?} successfully", filepath, dir)
-                        }
-                        Err(e) => print_err!("(operation failure): {}", e),
-                    }
-                }
-            }
-        }
+        Some(("update", _)) => update_command().await,
+        Some(("rename", sub_matches)) => rename_command(sub_matches),
+        Some(("copy", sub_matches)) => copy_command(sub_matches),
+        Some(("move", sub_matches)) => move_command(sub_matches),
         Some(("compress", sub_matches)) => compress_command(sub_matches),
         _ => unreachable!("Exhausted list of subcommands and subcommand_required prevents `None`"),
     }
