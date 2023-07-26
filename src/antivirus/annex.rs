@@ -18,7 +18,8 @@ custom_error! {pub AntivirusError
     InvalidApiResponse = "API response is invalid",
     ErrorApiResponse{message: String} = "{message}",
     ApiReponseAnalyseFailed = "Failed to analyse API Response",
-    CannotProcessEmptyFile = "Cannot process empty file"
+    CannotProcessEmptyFile = "Cannot process empty file",
+    ApiCallQueued = "API cannot process file yet. Try again later!"
 }
 
 pub async fn is_dangerous(file_path: &PathBuf) -> Result<bool, AntivirusError> {
@@ -75,7 +76,14 @@ async fn get_analysis_id(file_path: &PathBuf) -> Result<String, AntivirusError> 
         let response_data = api_response.data;
         return Ok(response_data.id);
     } else {
-        Err(AntivirusError::InvalidApiResponse)
+        let error_reponse: ErrorResponse = match serde_json::from_str(&text) {
+            Ok(r) => r,
+            Err(e) => return Err(e.into()),
+        };
+
+        return Err(AntivirusError::ErrorApiResponse {
+            message: error_reponse.error.message,
+        });
     }
 }
 
@@ -98,6 +106,9 @@ async fn get_analysis_report(id: &str) -> Result<AnalysisReportData, AntivirusEr
             Ok(r) => r,
             Err(e) => return Err(e.into()),
         };
+        if api_response.data.attributes.status != "completed" {
+            return Err(AntivirusError::ApiCallQueued);
+        }
         let response_data = api_response.data;
 
         Ok(response_data)

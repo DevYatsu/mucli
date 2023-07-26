@@ -134,8 +134,15 @@ async fn main() {
         )
         .subcommand(
             Command::new("antivirus")
-                .about("Check if a file may be malicious")
-                .arg(arg!([FILEPATH] "path to the script").required(true).value_parser(clap::value_parser!(PathBuf)))
+                .about("Check for malwares in a given file, using virustotal API")
+                .long_about(
+                    "Check for malwares in a given file, using virustotal API.
+This command returns:
+        - malicious threat detected: that is the number of engine reports saying the file is malicious
+        - suspicious threat detected: that is the number of engine reports saying the file is suspicious
+                    "
+                )
+                .arg(arg!([FILEPATH] "path to the file").required(true).value_parser(clap::value_parser!(PathBuf)))
         )
         .subcommand(
             Command::new("timer")
