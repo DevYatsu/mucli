@@ -40,7 +40,7 @@ pub struct AnalysisReportResponse {
     pub data: AnalysisReportData,
     pub id: Option<String>,
     pub links: Option<AnalysisReportLinks>,
-    meta: Option<AnalysisReportMeta>,
+    pub meta: Option<AnalysisReportMeta>,
 }
 
 #[derive(Debug, Default, Serialize, Deserialize)]
@@ -55,10 +55,10 @@ pub struct AnalysisReportMeta {
 }
 #[derive(Debug, Default, Serialize, Deserialize)]
 pub struct MetaFileInfo {
-    pub size: u64,
-    pub sha256: String,
-    pub sha1: String,
-    pub md5: String,
+    pub size: Option<u64>,
+    pub sha256: Option<String>,
+    pub sha1: Option<String>,
+    pub md5: Option<String>,
 }
 
 #[derive(Debug, Default, Serialize, Deserialize)]
@@ -90,10 +90,21 @@ pub struct ReportStats {
 
 #[derive(Debug, Default, Serialize, Deserialize)]
 pub struct Analysis {
-    pub category: String,
-    pub engine_name: String,
-    pub engine_update: String,
-    pub engine_version: String,
-    pub method: String,
+    pub category: Option<String>,
+    pub engine_name: Option<String>,
+    pub engine_update: Option<String>,
+    pub engine_version: Option<String>,
+    pub method: Option<String>,
     pub result: Option<String>,
+}
+
+
+#[derive(Debug, Default, Serialize, Deserialize)]
+pub struct ErrorResponse {
+    pub error: ErrorContent
+}
+#[derive(Debug, Default, Serialize, Deserialize)]
+pub struct ErrorContent {
+    pub message: String,
+    pub code: String
 }

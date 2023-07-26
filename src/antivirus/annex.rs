@@ -5,43 +5,38 @@ use base64_stream::ToBase64Reader;
 
 use crate::antivirus::responses::{AnalysisIdResponse, AnalysisReportResponse};
 use crate::file_as_bytes;
-use crate::utils::terminal::arrow_progress;
 use custom_error::custom_error;
 use reqwest::{self, multipart};
 use serde_json::Error as SerdeError;
-const API_KEY: &str = "000";
-use super::responses::AnalysisReportData;
+const API_KEY: &str = "XXX";
+use super::responses::{AnalysisReportData, ErrorResponse};
 
 custom_error! {pub AntivirusError
     Io{source: Error} = "{source}",
     ReqWest{source: reqwest::Error } = "{source}",
     Serde{source: SerdeError } = "{source}",
     InvalidApiResponse = "API response is invalid",
-    ErrorRetrievingVersion = "Cannot find release version",
+    ErrorApiResponse{message: String} = "{message}",
+    ApiReponseAnalyseFailed = "Failed to analyse API Response",
+    CannotProcessEmptyFile = "Cannot process empty file"
 }
 
 pub async fn is_dangerous(file_path: &PathBuf) -> Result<bool, AntivirusError> {
-    let pb = arrow_progress(3);
-
+    println!("Analysing file");
+    println!("It can take some time...");
     let id = get_analysis_id(file_path).await?;
-
-    pb.inc(1);
 
     let report = get_analysis_report(&id).await?;
 
-    pb.inc(2);
-
     let (malicious_number, suspicious_number) = reports_key_data(report);
 
-    pb.finish_and_clear();
-
     let malicious_display = if malicious_number > 0 {
-        format!("\x1B[41m{}\x1B[0m", malicious_number)
+        format!("\x1B[38;5;88m{}\x1B[0m", malicious_number)
     } else {
         format!("\x1B[32m{}\x1B[0m", malicious_number)
     };
     let suspicious_display = if suspicious_number > 0 {
-        format!("\x1B[41m{}\x1B[0m", suspicious_number)
+        format!("\x1B[38;5;88m{}\x1B[0m", suspicious_number)
     } else {
         format!("\x1B[32m{}\x1B[0m", suspicious_number)
     };
@@ -99,12 +94,20 @@ async fn get_analysis_report(id: &str) -> Result<AnalysisReportData, AntivirusEr
     let text = response.text().await?;
 
     if status.is_success() {
-        let api_response: AnalysisReportResponse = serde_json::from_str(&text).unwrap();
+        let api_response: AnalysisReportResponse = match serde_json::from_str(&text) {
+            Ok(r) => r,
+            Err(e) => return Err(e.into()),
+        };
         let response_data = api_response.data;
 
         Ok(response_data)
     } else {
-        return Err(AntivirusError::InvalidApiResponse);
+        let error_reponse: ErrorResponse = match serde_json::from_str(&text) {
+            Ok(r) => r,
+            Err(e) => return Err(e.into()),
+        };
+
+        return Err(AntivirusError::ErrorApiResponse { message: error_reponse.error.message } );
     }
 }
 
@@ -119,6 +122,10 @@ fn reports_key_data(report: AnalysisReportData) -> (u64, u64) {
 
 fn file_to_base64(file_path: &PathBuf) -> Result<String, AntivirusError> {
     let (_, file_content) = file_as_bytes!(file_path);
+
+    if file_content.len() == 0 {
+        return Err(AntivirusError::CannotProcessEmptyFile);
+    }
 
     let mut reader = ToBase64Reader::new(Cursor::new(file_content));
 
