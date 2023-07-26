@@ -173,9 +173,6 @@ mucli update
 
 ## Ideas of commands to implement in the future
 
-- "extract": Create a command to extract files from compressed archives, supporting popular formats like ZIP, TAR, GZ, etc.
-- "history": Implement a command to show the command history, allowing users to recall and re-execute previous commands.
-- "timer": Develop a command-line timer or stopwatch.
 - "network": Implement a command to display network-related information, such as IP address, network interfaces, and connectivity status.
 - "processes": Create a command to view running processes and manage them, allowing users to terminate or prioritize tasks.
 - "system-info": Develop a command to provide essential system information, including CPU, memory, disk usage, and OS details.
