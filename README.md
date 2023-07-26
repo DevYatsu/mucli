@@ -12,7 +12,7 @@ To use mucli, follow these steps:
 
 ## Usage
 
-mucli supports several commands and options to cater to your needs. Here are the available commands:
+mucli supports several commands and options to cater to your needs. Commands can sometimes need admin access to be executed. Here are the available commands:
 
 ### Set Password
 
@@ -101,25 +101,69 @@ Command to move a file into a directory.
 mucli move [FILEPATH] [DIR]
 ```
 
-### Compress
+### Zip
 
-Command to compress the specified file/directory and place the output file in the specified directory.
+Command to compress the specified file/folder and place the output zip file in the specified directory.
 
 ```bash
-# Compress the file/directory and place the output in the same directory as the source
-mucli compress [PATH]
+# Compress the file/folder and place the output in the same directory as the source
+mucli zip [PATH]
 
-# Compress the file/directory and place the output in the specified directory
-mucli compress [PATH] [OUTPUTDIR]
+# Compress the file/folder and place the output in the specified directory
+mucli zip [PATH] [OUTPUTDIR]
 
-# Compress the file/directory and place the output in the current directory
-mucli compress -c [PATH]
+# Compress the file/folder and place the output in the current directory
+mucli zip -c [PATH]
 
 # Compress with a specified compression level (0 to 9)
-mucli compress -l [LEVEL] [PATH]
+mucli zip -l [LEVEL] [PATH]
 ```
 
-### Update
+### Unzip
+
+Command to extract the specified zip file and place the output file/folder in the specified directory.
+
+```bash
+# Compress the file/folder and place the output in the same directory as the source
+mucli zip [PATH]
+
+# Compress the file/folder and place the output in the specified directory
+mucli zip [PATH] [OUTPUTDIR]
+
+# Compress the file/folder and place the output in the current directory
+mucli zip -c [PATH]
+```
+
+### Shell
+
+Command to execute a shell script.
+
+```bash
+mucli shell [FILEPATH]
+```
+
+### Antivirus
+
+Command to check for malwares in a given file, using the virustotal API.
+
+```bash
+mucli antivirus [FILEPATH]
+```
+
+The `antivirus` command returns:
+
+- Malicious threats detected: Number of engine reports indicating that the file is malicious.
+- Suspicious threats detected: Number of engine reports indicating that the file is suspicious.
+
+### Timer
+
+Command to use a simple timer.
+
+```bash
+mucli timer
+```
+
+### Update (still in development)
 
 Command to check if a new update of mucli is available (coming soon).
 
