@@ -98,13 +98,12 @@ pub struct Analysis {
     pub result: Option<String>,
 }
 
-
 #[derive(Debug, Default, Serialize, Deserialize)]
 pub struct ErrorResponse {
-    pub error: ErrorContent
+    pub error: ErrorContent,
 }
 #[derive(Debug, Default, Serialize, Deserialize)]
 pub struct ErrorContent {
     pub message: String,
-    pub code: String
+    pub code: String,
 }

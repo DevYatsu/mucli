@@ -9,6 +9,10 @@ use self::annex::execute_shell_script;
 
 pub fn shell_command(sub_matches: &ArgMatches) {
     if let Some(filepath) = sub_matches.get_one::<PathBuf>("FILEPATH") {
+        if !filepath.exists() {
+            print_err!("Source path must be a valid path!");
+            return;
+        }
         if !filepath.is_file() {
             print_err!("Source path must be a file!");
             return;

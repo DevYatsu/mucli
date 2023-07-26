@@ -107,7 +107,9 @@ async fn get_analysis_report(id: &str) -> Result<AnalysisReportData, AntivirusEr
             Err(e) => return Err(e.into()),
         };
 
-        return Err(AntivirusError::ErrorApiResponse { message: error_reponse.error.message } );
+        return Err(AntivirusError::ErrorApiResponse {
+            message: error_reponse.error.message,
+        });
     }
 }
 
