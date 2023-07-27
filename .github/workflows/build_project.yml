@@ -16,11 +16,6 @@ jobs:
           profile: minimal
           toolchain: stable
           override: true
-          targets: |
-            x86_64-unknown-linux-gnu
-            x86_64-pc-windows-msvc
-            x86_64-apple-darwin
-
       - uses: actions-rs/cargo@v1
         with:
           command: build
@@ -29,10 +24,22 @@ jobs:
       - name: Move Linux Executable
         run: mv target/x86_64-unknown-linux-gnu/release/mucli mucli_installation/mucli_linux
 
+      - uses: actions-rs/toolchain@v1
+        with:
+          profile: minimal
+          toolchain: x86_64-pc-windows-msvc
+          override: true
+
       - name: Build for Windows
         run: cargo build --release --target x86_64-pc-windows-msvc
       - name: Move Windows Executable
         run: mv target/x86_64-pc-windows-msvc/release/mucli.exe mucli_installation/mucli_windows.exe
+
+      - uses: actions-rs/toolchain@v1
+        with:
+          profile: minimal
+          toolchain: x86_64-apple-darwin
+          override: true
 
       - name: Build for macOS
         run: cargo build --release --target x86_64-apple-darwin
