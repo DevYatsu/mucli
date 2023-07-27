@@ -142,6 +142,15 @@ Command to execute a shell script.
 mucli shell [FILEPATH]
 ```
 
+### Qrcode
+
+Command to generate a qr-code for a given string/url. 
+
+```bash
+mucli qrcode [STRING]
+mucli qrcode "https://github.com/DevYatsu/mucli/"
+```
+
 ### Antivirus
 
 Command to check for malwares in a given file, using the virustotal API.
