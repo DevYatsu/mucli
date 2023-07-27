@@ -4,6 +4,7 @@ mod copy;
 mod encryption;
 mod r#move;
 mod password;
+mod qrcode;
 mod rename;
 mod shell;
 mod timer;
@@ -13,6 +14,7 @@ mod utils;
 use crate::antivirus::antivirus_command;
 use crate::compression::compress_command;
 use crate::copy::copy_command;
+use crate::qrcode::qrcode_command;
 use crate::r#move::move_command;
 use crate::rename::rename_command;
 use crate::shell::shell_command;
@@ -144,6 +146,11 @@ This command returns:
                 .arg(arg!([FILEPATH] "path to the file").required(true).value_parser(clap::value_parser!(PathBuf)))
         )
         .subcommand(
+            Command::new("qrcode")
+                .about("Generate a qr-code from a string/URL")
+                .arg(arg!([STRING] "path to the string/URL").required(true))
+        )
+        .subcommand(
             Command::new("timer")
                 .about("Just a simple timer")
         )
@@ -165,6 +172,7 @@ This command returns:
         Some(("timer", _)) => timer_command(),
         Some(("shell", sub_matches)) => shell_command(sub_matches),
         Some(("antivirus", sub_matches)) => antivirus_command(sub_matches).await,
+        Some(("qrcode", sub_matches)) => qrcode_command(sub_matches),
         _ => unreachable!("Exhausted list of subcommands and subcommand_required prevents `None`"),
     }
 }
