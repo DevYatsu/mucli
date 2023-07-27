@@ -137,7 +137,7 @@ pub fn password_command(sub_matches: &ArgMatches) {
                         match retrieve_questions() {
                             Ok(questions) => {
                                 println!("Questions List:");
-                                for question in &questions {
+                                for (question, _) in &questions.value {
                                     println!("• {}", question);
                                 }
                             }
@@ -147,11 +147,11 @@ pub fn password_command(sub_matches: &ArgMatches) {
                         let question: String = Input::with_theme(&ColorfulTheme::default())
                             .with_prompt("Your Question")
                             .validate_with(|input: &String| -> Result<(), &str> {
-                                let questions: Vec<String> = match retrieve_questions() {
-                                    Ok(questions) => questions,
+                                let questions = match retrieve_questions() {
+                                    Ok(questions) => questions.value,
                                     Err(_) => vec![],
                                 };
-                                if questions.iter().any(|line| line == &format!("{}", input)) {
+                                if questions.iter().any(|(q, _)| q == &format!("{}", input)) {
                                     Err("Cannot set a question twice")
                                 } else if input.len() > 9 {
                                     Ok(())
@@ -181,8 +181,8 @@ pub fn password_command(sub_matches: &ArgMatches) {
                             Err(_) => print_err!("Failed to add question and answer"),
                         };
                     } else if chosen == 2 {
-                        let mut choices = match retrieve_questions() {
-                            Ok(questions) => questions,
+                        let mut choices: Vec<String> = match retrieve_questions() {
+                            Ok(questions) => questions.value.into_iter().map(|(q, _)| q).collect(),
                             Err(_) => {
                                 print_err!("No question set");
                                 continue;
@@ -218,15 +218,18 @@ pub fn password_command(sub_matches: &ArgMatches) {
     } else if let true = sub_matches.contains_id("reset") {
         match get_password() {
             Ok(_) => match retrieve_questions() {
-                Ok(mut questions) => {
+                Ok(question_line) => {
+                    let mut questions: Vec<String> =
+                        question_line.value.iter().map(|(q, _)| q.to_string()).collect();
+                    let mut answers: Vec<String> =
+                        question_line.value.iter().map(|(_, a)| a.to_string()).collect();
                     if questions.len() < 3 {
                         print_err!("Not enough questions were set");
                         print_solution!("3 questions are needed to reset password");
                         return;
                     }
                     questions.push("Cancel".to_string());
-                    let mut answered_questions: Vec<[String; 2]> = vec![];
-                    const QUESTION_KEYWORD: &str = "MUCLI_QUESTION";
+                    let mut answered_questions: Vec<String> = vec![];
 
                     loop {
                         let chosen: usize = Select::with_theme(&ColorfulTheme::default())
@@ -245,50 +248,18 @@ pub fn password_command(sub_matches: &ArgMatches) {
                             .interact_text()
                             .unwrap();
 
-                        questions = match config!() {
-                            Ok(c) => {
-                                match c.filter_map_lines(|line| -> Option<String> {
-                                    if answered_questions.iter().any(|[q, a]| {
-                                        line == &format!("{}={}={}", QUESTION_KEYWORD, q, a)
-                                    }) {
-                                        None
-                                    } else if line
-                                        == &format!(
-                                            "{}={}={}",
-                                            QUESTION_KEYWORD, questions[chosen], answer
-                                        )
-                                    {
-                                        answered_questions.push([
-                                            questions[chosen].to_owned(),
-                                            answer.to_owned(),
-                                        ]);
-                                        if answered_questions.len() < 3 {
-                                            print_success!("That's a right answer");
-                                        }
-                                        None
-                                    } else if line.starts_with(&format!("{}=", QUESTION_KEYWORD)) {
-                                        Some(line.split('=').nth(1).unwrap().to_string())
-                                    } else {
-                                        None
-                                    }
-                                }) {
-                                    Ok(v) => v,
-                                    Err(_) => {
-                                        print_err!("An error occured!");
-                                        return;
-                                    }
-                                }
-                            }
-                            Err(e) => {
-                                print_err!("{:?}", e);
-                                return;
-                            }
+                        questions = if answer == answers[chosen + answered_questions.len()] {
+                            questions.remove(chosen);
+                            answered_questions.push(answer);
+                            questions
+                        }else {
+                            questions.into_iter().filter(|s| !answered_questions.contains(s)).collect()
                         };
+
                         if answered_questions.len() == 3 {
                             print_success!("That's 3 right answers! Change your password now!");
                             break;
                         }
-                        questions.push("Cancel".to_string());
                     }
                     let new_password: String = Password::with_theme(&ColorfulTheme::default())
                         .with_prompt("Enter your new password")

@@ -2,16 +2,16 @@ const PASSWORD_KEYWORD: &str = "MUCLI_PASSWORD";
 const PASSWORD_KEY_KEYWORD: &str = "MUCLI_KEY_PASSWORD";
 const QUESTION_KEYWORD: &str = "MUCLI_QUESTION";
 
-use std::io::{Error, Write};
+use std::io::Error;
 use std::num::ParseIntError;
 
 use simplecrypt::{decrypt, encrypt, DecryptionError};
 
+use crate::config;
 use crate::encryption::EncryptionError;
+use crate::utils::generate_encryption_key;
 use crate::utils::line::{Line, LineError};
 use crate::utils::{config_interact::Config, GenericError};
-use crate::utils::{generate_encryption_key, get_config_path};
-use crate::{config, config_line, file_truncate};
 
 extern crate custom_error;
 use custom_error::custom_error;
@@ -37,19 +37,13 @@ pub fn set_password(password: &str) -> Result<(), PasswordError> {
 
 pub fn get_password() -> Result<String, PasswordError> {
     let config = config!()?;
-    if !config.key_exists(PASSWORD_KEYWORD)? {
-        return Err(GenericError::KeyNotFound {
-            key: PASSWORD_KEYWORD.to_owned(),
-        }
-        .into());
-    }
 
     if let Some(password_line) = config.get_line(PASSWORD_KEYWORD) {
         let password: Line<Vec<u8>> = Line::from(&password_line)?;
-        return Ok(decrypt_password(password.value)?);
+        Ok(decrypt_password(password.value)?)
+    } else {
+        Err(PasswordError::RetrievePassword)
     }
-
-    Err(PasswordError::RetrievePassword)
 }
 
 pub fn encrypt_password(password: &str) -> Result<Vec<u8>, PasswordError> {
@@ -71,47 +65,38 @@ pub fn init_password_key() -> Result<(), PasswordError> {
 
 pub fn add_password_recovery_question(question: &str, answer: &str) -> Result<(), PasswordError> {
     let config = config!()?;
+
     let line = if let Some(line) = config.get_line(QUESTION_KEYWORD) {
         let mut parsed_line: Line<Vec<(String, String)>> = Line::from(&line)?;
-        parsed_line.add((question.to_string(), answer.to_string()));
+        parsed_line.add((question.trim().to_string(), answer.trim().to_string()));
         parsed_line
     } else {
         Line::new(
             QUESTION_KEYWORD,
-            vec![(question.to_string(), answer.to_string())],
+            vec![(question.trim().to_string(), answer.trim().to_string())],
         )
     };
     config!()?.replace_key(line)?;
     Ok(())
 }
 pub fn remove_password_recovery_question(index: usize) -> Result<(), PasswordError> {
-    let questions: Vec<String> = retrieve_questions()?;
+    let mut questions = retrieve_questions()?;
 
-    let formatted_str = format!("{}=", config_line!(QUESTION_KEYWORD, questions[index]));
+    questions.value.remove(index);
 
-    let lines: Vec<String> = config!()?.filter_map_lines(|q| {
-        if !q.starts_with(&formatted_str) {
-            Some(q.to_string())
-        } else {
-            None
-        }
-    })?;
-    let (mut file, _) = file_truncate!(get_config_path()?);
-
-    file.write_all(lines.join("\n").as_bytes())?;
-
+    config!()?.replace_key(questions)?;
     Ok(())
 }
-pub fn retrieve_questions() -> Result<Vec<String>, PasswordError> {
+pub fn retrieve_questions() -> Result<Line<Vec<(String, String)>>, PasswordError> {
     let config: Config = config!()?;
-    if !config.key_exists(QUESTION_KEYWORD)? {
+    if let Some(line) = config.get_line(QUESTION_KEYWORD) {
+        Ok(Line::from(&line)?)
+    } else {
         return Err(GenericError::KeyNotFound {
             key: QUESTION_KEYWORD.to_owned(),
         }
         .into());
     }
-
-    Ok(config.get_keys(QUESTION_KEYWORD))
 }
 
 fn encrypt_decrypt_password(

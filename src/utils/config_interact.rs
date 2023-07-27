@@ -3,8 +3,6 @@ use std::{
     io::{Read, Seek, SeekFrom, Write},
 };
 
-use crate::parse_config_line;
-
 use super::{line::Line, GenericError};
 use crate::utils::get_config_path;
 
@@ -70,14 +68,6 @@ impl Config {
         self.overwrite_content(&modified_buffer.as_bytes())?;
 
         Ok(())
-    }
-
-    pub fn get_keys(&self, keyword: &str) -> Vec<String> {
-        self.buffer
-            .lines()
-            .filter(|line| line.starts_with(&format!("{}{}", keyword, "=")))
-            .map(|l| parse_config_line!(l).unwrap().into_iter().nth(1).unwrap())
-            .collect::<Vec<String>>()
     }
 
     pub fn get_line(&self, keyword: &str) -> Option<String> {
