@@ -6,7 +6,7 @@ on:
       - main
 
 jobs:
-  build_and_move:
+  build_and_move_linux:
     runs-on: ubuntu-latest
 
     steps:
@@ -16,6 +16,7 @@ jobs:
       - name: Set up Rust
         uses: actions-rs/toolchain@v1
         with:
+          profile: minimal
           toolchain: stable
 
       - name: Build Project
@@ -34,6 +35,7 @@ jobs:
       - name: Set up Rust
         uses: actions-rs/toolchain@v1
         with:
+          profile: minimal
           toolchain: stable
 
       - name: Build for Windows
@@ -52,6 +54,7 @@ jobs:
       - name: Set up Rust
         uses: actions-rs/toolchain@v1
         with:
+          profile: minimal
           toolchain: stable
 
       - name: Build for macOS
