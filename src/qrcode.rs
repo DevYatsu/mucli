@@ -3,9 +3,14 @@ use dialoguer::{theme::ColorfulTheme, Input, Password, Select};
 use itertools::Itertools;
 use qrcode::QrCode;
 use wifi_qr_code::{AuthenticationType, Visibility, WifiCredentials};
-use wifiscanner;
+use wifiscanner::{self};
 
 use crate::print_err;
+
+struct ReducedWifi {
+    name: String,
+    protocol: String,
+}
 
 pub fn qrcode_command(sub_matches: &ArgMatches) {
     let string = if let Some(string) = sub_matches.get_one::<String>("STRING") {
@@ -14,24 +19,29 @@ pub fn qrcode_command(sub_matches: &ArgMatches) {
         let wifi_credentials = if let Ok(w) = wifiscanner::scan() {
             let wifis = w
                 .into_iter()
-                .map(|w| w.ssid)
-                .unique()
-                .collect::<Vec<String>>();
+                .map(|w| ReducedWifi {
+                    name: w.ssid,
+                    protocol: w.security,
+                })
+                .unique_by(|w| w.name.to_string())
+                .collect::<Vec<ReducedWifi>>();
 
             let choice = Select::with_theme(&ColorfulTheme::default())
                 .with_prompt("Select wifi name")
-                .items(&wifis)
+                .items(
+                    &wifis
+                        .iter()
+                        .map(|w| w.name.to_string())
+                        .collect::<Vec<String>>(),
+                )
                 .interact()
                 .unwrap();
 
-            let wifi_password = Input::with_theme(&ColorfulTheme::default())
-                .with_prompt("Wifi password")
-                .interact_text()
-                .unwrap();
+            let wifi_name = wifis[choice].name.to_string();
 
             WifiCredentials {
-                ssid: wifis[choice].to_string(),
-                authentication_type: AuthenticationType::WPA(wifi_password),
+                ssid: wifi_name,
+                authentication_type: protocol(&wifis[choice].protocol),
                 visibility: Visibility::Visible,
             }
         } else {
@@ -63,4 +73,24 @@ pub fn qrcode_command(sub_matches: &ArgMatches) {
         .module_dimensions(2, 1)
         .build();
     print!("{}", string);
+}
+
+fn protocol(security: &str) -> AuthenticationType {
+    match security {
+        security if security.starts_with("WEP") => {
+            let wifi_password = Input::with_theme(&ColorfulTheme::default())
+                .with_prompt("Wifi password")
+                .interact_text()
+                .unwrap();
+            AuthenticationType::WEP(wifi_password)
+        }
+        security if security.starts_with("WPA") || security.starts_with("RSN") => {
+            let wifi_password = Input::with_theme(&ColorfulTheme::default())
+                .with_prompt("Wifi password")
+                .interact_text()
+                .unwrap();
+            AuthenticationType::WPA(wifi_password)
+        }
+        _ => AuthenticationType::NoPassword,
+    }
 }
