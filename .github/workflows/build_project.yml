@@ -16,8 +16,8 @@ jobs:
       - name: Set up Rust
         uses: actions-rs/toolchain@v1
         with:
-          profile: minimal
           toolchain: stable
+          profile: minimal
 
       - name: Build Project
         run: cargo build --release
@@ -35,8 +35,8 @@ jobs:
       - name: Set up Rust
         uses: actions-rs/toolchain@v1
         with:
-          profile: minimal
           toolchain: stable
+          profile: minimal
 
       - name: Build for Windows
         run: cargo build --release
@@ -54,8 +54,8 @@ jobs:
       - name: Set up Rust
         uses: actions-rs/toolchain@v1
         with:
-          profile: minimal
           toolchain: stable
+          profile: minimal
 
       - name: Build for macOS
         run: cargo build --release
