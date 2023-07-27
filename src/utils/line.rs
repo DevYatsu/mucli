@@ -70,9 +70,6 @@ impl<E> Line<Vec<E>> {
     pub fn add(&mut self, new_element: E) {
         self.value.push(new_element);
     }
-    pub fn pop(&mut self) {
-        self.value.pop();
-    }
     pub fn set_new(&mut self, new_vec: Vec<E>) {
         self.value = new_vec;
     }
