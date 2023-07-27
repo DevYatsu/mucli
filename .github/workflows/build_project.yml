@@ -10,17 +10,16 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v2
-
-      - name: Set up Rust
-        uses: actions-rs/toolchain@v1
+      - uses: actions/checkout@v2
+      - uses: actions-rs/toolchain@v1
         with:
-          toolchain: stable
           profile: minimal
-
-      - name: Build Project
-        run: cargo build --release
+          toolchain: stable
+          override: true
+      - uses: actions-rs/cargo@v1
+        with:
+          command: build
+          args: --release
 
       - name: Move Executable
         run: mv target/release/mucli mucli_installation/mucli_linux
@@ -29,17 +28,16 @@ jobs:
     runs-on: windows-latest
 
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v2
-
-      - name: Set up Rust
-        uses: actions-rs/toolchain@v1
+      - uses: actions/checkout@v2
+      - uses: actions-rs/toolchain@v1
         with:
-          toolchain: stable
           profile: minimal
-
-      - name: Build for Windows
-        run: cargo build --release
+          toolchain: stable
+          override: true
+      - uses: actions-rs/cargo@v1
+        with:
+          command: build
+          args: --release
 
       - name: Move Windows Executable
         run: Move-Item target\release\mucli.exe mucli_installation\mucli_windows.exe
@@ -48,17 +46,16 @@ jobs:
     runs-on: macos-latest
 
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v2
-
-      - name: Set up Rust
-        uses: actions-rs/toolchain@v1
+      - uses: actions/checkout@v2
+      - uses: actions-rs/toolchain@v1
         with:
-          toolchain: stable
           profile: minimal
-
-      - name: Build for macOS
-        run: cargo build --release
+          toolchain: stable
+          override: true
+      - uses: actions-rs/cargo@v1
+        with:
+          command: build
+          args: --release
 
       - name: Move macOS Executable
         run: mv target/release/mucli mucli_installation/mucli_macos
