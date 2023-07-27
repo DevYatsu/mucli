@@ -10,13 +10,12 @@ use clap::ArgMatches;
 use simplecrypt::DecryptionError;
 
 use crate::{
-    config,
     encryption::annex::{
         encrypt_file, encrypt_file_x, encrypted_file_path, init_encryption_key,
         init_new_encryption_key, purge_encryption_keys, update_file_encryption_key,
     },
     parse_config_line, print_err, print_solution, print_success,
-    utils::{line::LineError, GenericError},
+    utils::{config_interact::Config, line::LineError, GenericError},
 };
 use custom_error::custom_error;
 
@@ -321,7 +320,7 @@ pub fn decrypt_command(sub_matches: &ArgMatches) {
 }
 
 pub fn latest_encryption_version() -> Result<u32, EncryptionError> {
-    let mut filtered_lines: Vec<u32> = config!()?.filter_map_lines(|line| {
+    let mut filtered_lines: Vec<u32> = Config::open()?.filter_map_lines(|line| {
         if line.starts_with(&format!("{}=", ENCRYPTION_KEYWORD)) {
             return Some(
                 parse_config_line!(line)

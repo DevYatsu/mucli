@@ -18,7 +18,6 @@ use crate::rename::rename_command;
 use crate::shell::shell_command;
 use crate::timer::timer_command;
 use crate::update::update_command;
-use crate::utils::config_interact::Config;
 use clap::{arg, command, ArgAction, ArgGroup, Command};
 
 use compression::extract_command;

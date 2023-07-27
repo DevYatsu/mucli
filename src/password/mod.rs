@@ -5,7 +5,7 @@ mod annex;
 use clap::ArgMatches;
 use dialoguer::{theme::ColorfulTheme, Input, Password, Select};
 
-use crate::{config, print_err, print_solution, print_success};
+use crate::{print_err, print_solution, print_success};
 
 use self::annex::{
     add_password_recovery_question, get_password, init_password_key,
@@ -219,10 +219,16 @@ pub fn password_command(sub_matches: &ArgMatches) {
         match get_password() {
             Ok(_) => match retrieve_questions() {
                 Ok(question_line) => {
-                    let mut questions: Vec<String> =
-                        question_line.value.iter().map(|(q, _)| q.to_string()).collect();
-                    let mut answers: Vec<String> =
-                        question_line.value.iter().map(|(_, a)| a.to_string()).collect();
+                    let mut questions: Vec<String> = question_line
+                        .value
+                        .iter()
+                        .map(|(q, _)| q.to_string())
+                        .collect();
+                    let answers: Vec<String> = question_line
+                        .value
+                        .iter()
+                        .map(|(_, a)| a.to_string())
+                        .collect();
                     if questions.len() < 3 {
                         print_err!("Not enough questions were set");
                         print_solution!("3 questions are needed to reset password");
@@ -252,8 +258,11 @@ pub fn password_command(sub_matches: &ArgMatches) {
                             questions.remove(chosen);
                             answered_questions.push(answer);
                             questions
-                        }else {
-                            questions.into_iter().filter(|s| !answered_questions.contains(s)).collect()
+                        } else {
+                            questions
+                                .into_iter()
+                                .filter(|s| !answered_questions.contains(s))
+                                .collect()
                         };
 
                         if answered_questions.len() == 3 {

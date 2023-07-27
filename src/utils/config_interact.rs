@@ -6,21 +6,12 @@ use std::{
 use super::{line::Line, GenericError};
 use crate::utils::get_config_path;
 
-#[macro_export]
-macro_rules! config {
-    () => {{
-        use crate::Config;
-
-        Config::new()
-    }};
-}
-
 pub struct Config {
     pub file: File,
     buffer: String,
 }
 impl Config {
-    pub fn new() -> Result<Self, GenericError> {
+    pub fn open() -> Result<Self, GenericError> {
         let path = get_config_path()?;
 
         let mut file = std::fs::OpenOptions::new()

@@ -7,7 +7,6 @@ use std::num::ParseIntError;
 
 use simplecrypt::{decrypt, encrypt, DecryptionError};
 
-use crate::config;
 use crate::encryption::EncryptionError;
 use crate::utils::generate_encryption_key;
 use crate::utils::line::{Line, LineError};
@@ -31,12 +30,12 @@ custom_error! {pub PasswordError
 }
 
 pub fn set_password(password: &str) -> Result<(), PasswordError> {
-    config!()?.replace_key(Line::new(PASSWORD_KEYWORD, encrypt_password(password)?))?;
+    Config::open()?.replace_key(Line::new(PASSWORD_KEYWORD, encrypt_password(password)?))?;
     Ok(())
 }
 
 pub fn get_password() -> Result<String, PasswordError> {
-    let config = config!()?;
+    let config = Config::open()?;
 
     if let Some(password_line) = config.get_line(PASSWORD_KEYWORD) {
         let password: Line<Vec<u8>> = Line::from(&password_line)?;
@@ -56,7 +55,7 @@ pub fn decrypt_password(crypted_value: Vec<u8>) -> Result<String, PasswordError>
 }
 
 pub fn init_password_key() -> Result<(), PasswordError> {
-    let mut config = config!()?;
+    let mut config = Config::open()?;
     if let None = config.get_line(PASSWORD_KEY_KEYWORD) {
         config.set_line(Line::new(PASSWORD_KEY_KEYWORD, generate_encryption_key(32)))?
     }
@@ -64,7 +63,7 @@ pub fn init_password_key() -> Result<(), PasswordError> {
 }
 
 pub fn add_password_recovery_question(question: &str, answer: &str) -> Result<(), PasswordError> {
-    let config = config!()?;
+    let config = Config::open()?;
 
     let line = if let Some(line) = config.get_line(QUESTION_KEYWORD) {
         let mut parsed_line: Line<Vec<(String, String)>> = Line::from(&line)?;
@@ -76,7 +75,7 @@ pub fn add_password_recovery_question(question: &str, answer: &str) -> Result<()
             vec![(question.trim().to_string(), answer.trim().to_string())],
         )
     };
-    config!()?.replace_key(line)?;
+    Config::open()?.replace_key(line)?;
     Ok(())
 }
 pub fn remove_password_recovery_question(index: usize) -> Result<(), PasswordError> {
@@ -84,11 +83,11 @@ pub fn remove_password_recovery_question(index: usize) -> Result<(), PasswordErr
 
     questions.value.remove(index);
 
-    config!()?.replace_key(questions)?;
+    Config::open()?.replace_key(questions)?;
     Ok(())
 }
 pub fn retrieve_questions() -> Result<Line<Vec<(String, String)>>, PasswordError> {
-    let config: Config = config!()?;
+    let config: Config = Config::open()?;
     if let Some(line) = config.get_line(QUESTION_KEYWORD) {
         Ok(Line::from(&line)?)
     } else {
@@ -103,7 +102,7 @@ fn encrypt_decrypt_password(
     password: Vec<u8>,
     encrypt_bool: bool,
 ) -> Result<Vec<u8>, PasswordError> {
-    let config = config!()?;
+    let config = Config::open()?;
     if let Some(password_line) = config.get_line(PASSWORD_KEY_KEYWORD) {
         let line: Line<Vec<u8>> = Line::from(&password_line)?;
 

@@ -1,7 +1,8 @@
+use crate::crypted_file;
+use crate::utils::config_interact::Config;
 use crate::utils::file::CryptedFile;
 use crate::utils::generate_encryption_key;
 use crate::utils::line::Line;
-use crate::{config, crypted_file};
 use indicatif::ProgressBar;
 use simplecrypt::{decrypt, encrypt};
 use std::path::{Path, PathBuf};
@@ -113,7 +114,7 @@ pub fn decrypted_file_path(file_path: &Path, current_dir: &Path) -> PathBuf {
 }
 
 pub fn init_encryption_key() -> Result<(), EncryptionError> {
-    match config!()?.key_exists(ENCRYPTION_KEYWORD) {
+    match Config::open()?.key_exists(ENCRYPTION_KEYWORD) {
         Ok(val) => {
             if let false = val {
                 set_encryption_key()?
@@ -125,7 +126,7 @@ pub fn init_encryption_key() -> Result<(), EncryptionError> {
 }
 
 pub fn init_new_encryption_key() -> Result<(), EncryptionError> {
-    match config!()?.key_exists(ENCRYPTION_KEYWORD) {
+    match Config::open()?.key_exists(ENCRYPTION_KEYWORD) {
         Ok(val) => {
             if let true = val {
                 set_encryption_key()?
@@ -160,7 +161,7 @@ pub fn update_file_encryption_key(filepath: &PathBuf) -> Result<(), EncryptionEr
 }
 
 pub fn purge_encryption_keys() -> Result<(), EncryptionError> {
-    let mut config = config!()?;
+    let mut config = Config::open()?;
 
     let new_line = if let Some(line) = config.get_line(ENCRYPTION_KEYWORD) {
         let mut parsed_line: Line<Vec<Vec<u8>>> = Line::from(&line)?;
@@ -175,7 +176,7 @@ pub fn purge_encryption_keys() -> Result<(), EncryptionError> {
 }
 
 fn set_encryption_key() -> Result<(), EncryptionError> {
-    let mut config = config!()?;
+    let mut config = Config::open()?;
     let new_line = if let Some(line) = config.get_line(ENCRYPTION_KEYWORD) {
         let mut parsed_line: Line<Vec<Vec<u8>>> = Line::from(&line)?;
         parsed_line.add(generate_encryption_key(32));
@@ -190,7 +191,7 @@ fn set_encryption_key() -> Result<(), EncryptionError> {
 }
 
 fn retrieve_encryption_keys() -> Result<Vec<Vec<u8>>, EncryptionError> {
-    let config = config!()?;
+    let config = Config::open()?;
     let encryption_keys: Line<Vec<Vec<u8>>> =
         if let Some(line) = config.get_line(ENCRYPTION_KEYWORD) {
             Line::from(&line)?
