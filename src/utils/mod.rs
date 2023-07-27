@@ -1,6 +1,7 @@
 pub mod config_interact;
 pub mod file;
 pub mod terminal;
+pub mod line;
 
 extern crate custom_error;
 use std::{io::Error, num::ParseIntError, path::PathBuf};
