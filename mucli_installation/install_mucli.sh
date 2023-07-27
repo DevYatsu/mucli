@@ -16,8 +16,8 @@ esac
 case "$(uname -s)" in
     Linux*)     INSTALL_FILE="./mucli_linux" ;;  # Linux
     Darwin*)    INSTALL_FILE="./mucli_macos" ;;  # macOS
-    CYGWIN*)    INSTALL_FILE="./mucli_windows" ;;  # Cygwin (Windows-like environment)
-    MINGW*)     INSTALL_FILE="./mucli_windows" ;;  # MinGW (Windows-like environment)
+    CYGWIN*)    INSTALL_FILE="./mucli_windows.exe" ;;  # Cygwin (Windows-like environment)
+    MINGW*)     INSTALL_FILE="./mucli_windows.exe" ;;  # MinGW (Windows-like environment)
     *)
         echo "Unsupported operating system."
         exit 1

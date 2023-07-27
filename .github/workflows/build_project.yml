@@ -1,0 +1,61 @@
+name: Build and Move to mucli_installation
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  build_and_move:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v2
+
+      - name: Set up Rust
+        uses: actions-rs/toolchain@v1
+        with:
+          profile: minimal
+
+      - name: Build Project
+        run: cargo build --release
+
+      - name: Move Executable
+        run: mv target/release/mucli mucli_installation/mucli_linux
+
+  build_and_move_windows:
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v2
+
+      - name: Set up Rust
+        uses: actions-rs/toolchain@v1
+        with:
+          profile: minimal
+
+      - name: Build for Windows
+        run: cargo build --release
+
+      - name: Move Windows Executable
+        run: Move-Item target\release\mucli.exe mucli_installation\mucli_windows.exe
+
+  build_and_move_macos:
+    runs-on: macos-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v2
+
+      - name: Set up Rust
+        uses: actions-rs/toolchain@v1
+        with:
+          profile: minimal
+
+      - name: Build for macOS
+        run: cargo build --release
+
+      - name: Move macOS Executable
+        run: mv target/release/mucli mucli_installation/mucli_macos
