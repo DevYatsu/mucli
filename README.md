@@ -182,7 +182,6 @@ mucli update
 
 ## Ideas of commands to implement in the future
 
-- "network": Implement a command to display network-related information, such as IP address, network interfaces, and connectivity status.
 - "processes": Create a command to view running processes and manage them, allowing users to terminate or prioritize tasks.
 - "system-info": Develop a command to provide essential system information, including CPU, memory, disk usage, and OS details.
 - "currency": Create a command to convert between different currencies, using up-to-date exchange rates.
