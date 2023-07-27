@@ -1,6 +1,7 @@
 use crate::utils::file::CryptedFile;
 use crate::utils::generate_encryption_key;
-use crate::{config, config_line, crypted_file};
+use crate::utils::line::Line;
+use crate::{config, crypted_file};
 use indicatif::ProgressBar;
 use simplecrypt::{decrypt, encrypt};
 use std::path::{Path, PathBuf};
@@ -8,7 +9,7 @@ use std::thread;
 use std::time::Duration;
 
 const ENCRYPTION_KEYWORD: &str = "MUCLI_ENCRYPT";
-use crate::utils::{config_interact::vec_as_string, terminal::arrow_progress};
+use crate::utils::terminal::arrow_progress;
 
 use super::{latest_encryption_version, EncryptionError};
 
@@ -161,73 +162,47 @@ pub fn update_file_encryption_key(filepath: &PathBuf) -> Result<(), EncryptionEr
 pub fn purge_encryption_keys() -> Result<(), EncryptionError> {
     let mut config = config!()?;
 
-    let filtered_content = config
-        .filter_map_lines(|line| {
-            if !line.starts_with(&format!("{}=", ENCRYPTION_KEYWORD)) {
-                return Some(line.to_string());
-            }
-            None
-        })?
-        .join("\n");
+    let new_line = if let Some(line) = config.get_line(ENCRYPTION_KEYWORD) {
+        let mut parsed_line: Line<Vec<Vec<u8>>> = Line::from(&line)?;
+        parsed_line.set_new(vec![]);
+        parsed_line
+    } else {
+        Line::new(ENCRYPTION_KEYWORD, vec![])
+    };
 
-    config.overwrite_content(filtered_content.as_bytes())?;
+    config.replace_key(new_line)?;
     Ok(())
 }
 
 fn set_encryption_key() -> Result<(), EncryptionError> {
-    let version = match latest_encryption_version() {
-        Ok(val) => val + 1,
-        Err(_) => 0,
+    let mut config = config!()?;
+    let new_line = if let Some(line) = config.get_line(ENCRYPTION_KEYWORD) {
+        let mut parsed_line: Line<Vec<Vec<u8>>> = Line::from(&line)?;
+        parsed_line.add(generate_encryption_key(32));
+        parsed_line
+    } else {
+        Line::new(ENCRYPTION_KEYWORD, vec![generate_encryption_key(32)])
     };
 
-    let new_line = config_line!(
-        ENCRYPTION_KEYWORD,
-        version,
-        vec_as_string(generate_encryption_key(32))
-    );
-
-    config!()?.set_key(new_line)?;
+    config.set_line(new_line)?;
 
     Ok(())
 }
 
 fn retrieve_encryption_keys() -> Result<Vec<Vec<u8>>, EncryptionError> {
-    let mut filtered_lines = config!()?.filter_map_lines(|line| -> Option<(usize, Vec<u8>)> {
-        if line.starts_with(&format!("{}=", ENCRYPTION_KEYWORD)) {
-            return Some(parse_encryption_key_line(line));
-        }
-        None
-    })?;
+    let config = config!()?;
+    let encryption_keys: Line<Vec<Vec<u8>>> =
+        if let Some(line) = config.get_line(ENCRYPTION_KEYWORD) {
+            Line::from(&line)?
+        } else {
+            return Err(EncryptionError::KeyNotExist);
+        };
 
-    if filtered_lines.is_empty() {
+    if encryption_keys.value.is_empty() {
         return Err(EncryptionError::NoKeyFound);
     }
 
-    filtered_lines.sort_by_key(|(key, _)| *key);
-
-    let encryption_keys = filtered_lines.into_iter().map(|(_, vec)| vec).collect();
-
-    Ok(encryption_keys)
-}
-
-fn parse_encryption_key_line(line: &str) -> (usize, Vec<u8>) {
-    let mut iterator = line.split('=');
-    iterator.next();
-    let key_value = iterator.next().unwrap().trim();
-    let index = key_value.parse().unwrap();
-
-    let raw_values = iterator
-        .next()
-        .unwrap()
-        .trim()
-        .trim_matches(|c| c == '[' || c == ']');
-
-    let values: Vec<u8> = raw_values
-        .split(',')
-        .map(|val| val.trim().parse::<u8>().unwrap())
-        .collect();
-
-    (index, values)
+    Ok(encryption_keys.value)
 }
 
 fn nth_encription_key(index: usize) -> Result<Vec<u8>, EncryptionError> {

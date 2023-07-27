@@ -16,7 +16,7 @@ use crate::{
         init_new_encryption_key, purge_encryption_keys, update_file_encryption_key,
     },
     parse_config_line, print_err, print_solution, print_success,
-    utils::GenericError,
+    utils::{line::LineError, GenericError},
 };
 use custom_error::custom_error;
 
@@ -26,6 +26,7 @@ custom_error! {pub EncryptionError
     Io{source: Error} = "{source}",
     Generic{source: GenericError} = "{source}",
     Decrypt{source: DecryptionError} = "{source}",
+    Line{source: LineError} = "{source}",
     NoKeyFound = "No key found in config.txt",
     RetrievingKey = "Error retrieving encryption key",
     KeyNotExist = "Encryption key does not exist",
