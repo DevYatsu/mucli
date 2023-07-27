@@ -3,6 +3,7 @@ mod compression;
 mod copy;
 mod encryption;
 mod r#move;
+mod network;
 mod password;
 mod qrcode;
 mod rename;
@@ -24,6 +25,7 @@ use clap::{arg, command, ArgAction, ArgGroup, Command};
 
 use compression::extract_command;
 use encryption::{decrypt_command, encrypt_command};
+use network::network_command;
 use password::password_command;
 use std::path::PathBuf;
 
@@ -134,6 +136,10 @@ async fn main() {
                 .arg(arg!([FILEPATH] "path to the script").required(true).value_parser(clap::value_parser!(PathBuf)))
         )
         .subcommand(
+            Command::new("network")
+                .about("Get informations about your network")
+        )
+        .subcommand(
             Command::new("antivirus")
                 .about("Check for malwares in a given file, using virustotal API")
                 .long_about(
@@ -148,7 +154,9 @@ This command returns:
         .subcommand(
             Command::new("qrcode")
                 .about("Generate a qr-code from a string/URL")
-                .arg(arg!([STRING] "path to the string/URL").required(true))
+                .group(ArgGroup::new("qrcode_group").args(["STRING", "wifi"]).required(true))
+                .arg(arg!([STRING] "path to the string/URL"))
+                .arg(arg!(-'w' --"wifi" "generates a wifi connexion qrcode"))
         )
         .subcommand(
             Command::new("timer")
@@ -173,6 +181,7 @@ This command returns:
         Some(("shell", sub_matches)) => shell_command(sub_matches),
         Some(("antivirus", sub_matches)) => antivirus_command(sub_matches).await,
         Some(("qrcode", sub_matches)) => qrcode_command(sub_matches),
+        Some(("network", _)) => network_command(),
         _ => unreachable!("Exhausted list of subcommands and subcommand_required prevents `None`"),
     }
 }
