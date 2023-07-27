@@ -7,7 +7,10 @@ on:
 
 jobs:
   build_and_move:
-    runs-on: ubuntu-latest
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [ubuntu-latest, macos-latest]
 
     steps:
       - uses: actions/checkout@v2
@@ -19,25 +22,7 @@ jobs:
       - uses: actions-rs/cargo@v1
         with:
           command: build
-          args: --release --target x86_64-unknown-linux-gnu
+          args: --release
 
-      - name: Move Linux Executable
-        run: mv target/x86_64-unknown-linux-gnu/release/mucli mucli_installation/mucli_linux
-
-      - uses: dtolnay/rust-toolchain@master
-        with:
-          toolchain: x86_64-pc-windows-msvc
-
-      - name: Build for Windows
-        run: cargo build --release --target x86_64-pc-windows-msvc
-      - name: Move Windows Executable
-        run: mv target/x86_64-pc-windows-msvc/release/mucli.exe mucli_installation/mucli_windows.exe
-
-      - uses: dtolnay/rust-toolchain@master
-        with:
-          toolchain: x86_64-apple-darwin
-
-      - name: Build for macOS
-        run: cargo build --release --target x86_64-apple-darwin
-      - name: Move macOS Executable
-        run: mv target/x86_64-apple-darwin/release/mucli mucli_installation/mucli_macos
+      - name: Move Executable
+        run: mv target/release/mucli mucli_installation/mucli_${{ matrix.os == 'windows-latest' && 'windows' || matrix.os == 'macos-latest' && 'macos' || 'linux' }}
