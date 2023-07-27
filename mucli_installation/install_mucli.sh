@@ -27,10 +27,15 @@ esac
 # Copy "mucli" to the installation directory
 cp $INSTALL_FILE $INSTALL_DIR/mucli
 
-# Provide executable permissions to "mucli" (not needed on Windows)
-if [ "$(uname -s)" != "MINGW"* ]; then
-    chmod +x $INSTALL_DIR/mucli
-fi
+# Check if the copy command was successful
+if [ $? -eq 0 ]; then
+    # Provide executable permissions to "mucli" (not needed on Windows)
+    if [ "$(uname -s)" != "MINGW"* ]; then
+        chmod +x $INSTALL_DIR/mucli
+    fi
 
-# Inform the user that the installation is complete
-echo "mucli has been set up successfully!"
+    # Inform the user that the installation is complete
+    echo "mucli has been set up successfully!"
+else
+    echo "Installation failed. Please make sure you have the necessary permissions."
+fi
