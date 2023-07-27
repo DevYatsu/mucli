@@ -3,26 +3,15 @@ use std::{
     io::{Read, Seek, SeekFrom, Write},
 };
 
-use crate::parse_config_line;
-
-use super::GenericError;
+use super::{line::Line, GenericError};
 use crate::utils::get_config_path;
-
-#[macro_export]
-macro_rules! config {
-    () => {{
-        use crate::Config;
-
-        Config::new()
-    }};
-}
 
 pub struct Config {
     pub file: File,
     buffer: String,
 }
 impl Config {
-    pub fn new() -> Result<Self, GenericError> {
+    pub fn open() -> Result<Self, GenericError> {
         let path = get_config_path()?;
 
         let mut file = std::fs::OpenOptions::new()
@@ -48,20 +37,22 @@ impl Config {
         Ok(())
     }
 
-    pub fn set_key(&mut self, new_line: String) -> Result<(), GenericError> {
-        writeln!(self.file, "{}", new_line)?;
+    pub fn set_line<T: serde::Serialize>(&mut self, new_line: Line<T>) -> Result<(), GenericError> {
+        writeln!(self.file, "{}", new_line.format()?)?;
 
         Ok(())
     }
 
-    pub fn replace_key(&mut self, keyword: &str, mut new_line: String) -> Result<(), GenericError> {
-        new_line.push('\n');
+    pub fn replace_key<T: serde::Serialize>(
+        &mut self,
+        new_line: Line<T>,
+    ) -> Result<(), GenericError> {
         // Create a new buffer with modified lines
         let modified_buffer = self
             .buffer
             .lines()
-            .filter(|line| !line.starts_with(&format!("{}=", keyword)))
-            .chain(std::iter::once(new_line.as_str()))
+            .filter(|line| !line.starts_with(&format!("{}=", new_line.key)))
+            .chain(std::iter::once(new_line.format()?.as_str()))
             .collect::<Vec<&str>>()
             .join("\n");
 
@@ -70,22 +61,14 @@ impl Config {
         Ok(())
     }
 
-    pub fn get_keys(&self, keyword: &str) -> Vec<String> {
-        self.buffer
-            .lines()
-            .filter(|line| line.starts_with(&format!("{}{}", keyword, "=")))
-            .map(|l| parse_config_line!(l).unwrap().into_iter().nth(1).unwrap())
-            .collect::<Vec<String>>()
-    }
-
-    pub fn get_key(&self, keyword: &str) -> Result<Option<String>, GenericError> {
+    pub fn get_line(&self, keyword: &str) -> Option<String> {
         for line in self.buffer.lines() {
             if line.starts_with(&format!("{}{}", keyword, "=")) {
-                return Ok(parse_config_line!(line).unwrap().into_iter().nth(1));
+                return Some(line.to_owned());
             }
         }
 
-        Ok(None)
+        None
     }
 
     pub fn filter_map_lines<F, T>(&self, f: F) -> Result<Vec<T>, GenericError>
@@ -106,24 +89,4 @@ impl Config {
         }
         Ok(false)
     }
-}
-
-pub fn string_as_vec<T: std::str::FromStr>(string: &str) -> Result<Vec<T>, T::Err>
-where
-    T::Err: std::fmt::Debug,
-{
-    Ok(string
-        .trim_matches(|c| c == '[' || c == ']')
-        .split(',')
-        .map(|val| val.trim().parse::<T>().unwrap())
-        .collect::<Vec<T>>())
-}
-pub fn vec_as_string<T: ToString>(vec: Vec<T>) -> String {
-    format!(
-        "[{}]",
-        vec.into_iter()
-            .map(|val| val.to_string())
-            .collect::<Vec<_>>()
-            .join(",")
-    )
 }
