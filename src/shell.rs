@@ -1,11 +1,7 @@
-mod annex;
-use std::{ffi::OsString, path::PathBuf};
-
-use clap::ArgMatches;
-
+use crate::utils::GenericError;
 use crate::{print_err, print_success};
-
-use self::annex::execute_shell_script;
+use clap::ArgMatches;
+use std::{ffi::OsString, path::PathBuf, process::Command};
 
 pub fn shell_command(sub_matches: &ArgMatches) {
     if let Some(filepath) = sub_matches.get_one::<PathBuf>("FILEPATH") {
@@ -28,4 +24,10 @@ pub fn shell_command(sub_matches: &ArgMatches) {
             Err(e) => print_err!("(execution error): {}", e),
         };
     }
+}
+
+fn execute_shell_script(path: &PathBuf) -> Result<(), GenericError> {
+    Command::new("sh").arg(path).status()?;
+
+    Ok(())
 }
