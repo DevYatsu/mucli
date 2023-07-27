@@ -181,7 +181,6 @@ mucli update
 - "translator": Implement a command to translate text between different languages using popular translation APIs.
 - "random": Create a command to generate random numbers, passwords, or strings.
 - "calculator": Implement a command-line calculator capable of performing basic arithmetic and advanced mathematical operations.
-- "qr-code": Develop a command to generate QR codes for text or URLs, as well as decode existing QR codes.
 - "weather": Implement a command to display weather forecasts and current conditions for a specified location.
 
 ## Feedback and Contributions
