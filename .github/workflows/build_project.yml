@@ -6,8 +6,11 @@ on:
       - main
 
 jobs:
-  build_and_move_linux:
-    runs-on: ubuntu-latest
+  build_and_move:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
 
     steps:
       - uses: actions/checkout@v2
@@ -19,43 +22,17 @@ jobs:
       - uses: actions-rs/cargo@v1
         with:
           command: build
-          args: --release
+          args: --release --target x86_64-unknown-linux-gnu
 
-      - name: Move Executable
-        run: mv target/release/mucli mucli_installation/mucli_linux
+      - name: Move Linux Executable
+        run: mv target/x86_64-unknown-linux-gnu/release/mucli mucli_installation/mucli_linux
 
-  build_and_move_windows:
-    runs-on: windows-latest
-
-    steps:
-      - uses: actions/checkout@v2
-      - uses: actions-rs/toolchain@v1
-        with:
-          profile: minimal
-          toolchain: stable
-          override: true
-      - uses: actions-rs/cargo@v1
-        with:
-          command: build
-          args: --release
-
+      - name: Build for Windows
+        run: cargo build --release --target x86_64-pc-windows-msvc
       - name: Move Windows Executable
-        run: Move-Item target\release\mucli.exe mucli_installation\mucli_windows.exe
+        run: mv target/x86_64-pc-windows-msvc/release/mucli.exe mucli_installation/mucli_windows.exe
 
-  build_and_move_macos:
-    runs-on: macos-latest
-
-    steps:
-      - uses: actions/checkout@v2
-      - uses: actions-rs/toolchain@v1
-        with:
-          profile: minimal
-          toolchain: stable
-          override: true
-      - uses: actions-rs/cargo@v1
-        with:
-          command: build
-          args: --release
-
+      - name: Build for macOS
+        run: cargo build --release --target x86_64-apple-darwin
       - name: Move macOS Executable
-        run: mv target/release/mucli mucli_installation/mucli_macos
+        run: mv target/x86_64-apple-darwin/release/mucli mucli_installation/mucli_macos
