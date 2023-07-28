@@ -15,6 +15,8 @@ custom_error! {pub GenericError
     Io{source: Error} = "{source}",
     Line{source: LineError} = "{source}",
     Format{source: ParseIntError} = "{source}",
+    ReqWest{source: reqwest::Error} = "{source}",
+    Deserialize{source: serde_json::Error} = "{source}",
     KeyNotFound{key: String} = "Key \"{key}\" not found in config file.",
     Unknown = "unknown error",
     Custom{message: String} = "{message}",

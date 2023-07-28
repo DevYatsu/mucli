@@ -1,6 +1,7 @@
 mod antivirus;
 mod compression;
 mod copy;
+mod currency;
 mod encryption;
 mod r#move;
 mod network;
@@ -24,6 +25,7 @@ use crate::update::update_command;
 use clap::{arg, command, ArgAction, ArgGroup, Command};
 
 use compression::extract_command;
+use currency::currency_command;
 use encryption::{decrypt_command, encrypt_command};
 use network::network_command;
 use password::password_command;
@@ -140,6 +142,10 @@ async fn main() {
                 .about("Get informations about your network")
         )
         .subcommand(
+            Command::new("currency")
+                .about("Convert one currency to another")
+        )
+        .subcommand(
             Command::new("antivirus")
                 .about("Check for malwares in a given file, using virustotal API")
                 .long_about(
@@ -182,6 +188,7 @@ This command returns:
         Some(("antivirus", sub_matches)) => antivirus_command(sub_matches).await,
         Some(("qrcode", sub_matches)) => qrcode_command(sub_matches),
         Some(("network", _)) => network_command(),
+        Some(("currency", _)) => currency_command().await,
         _ => unreachable!("Exhausted list of subcommands and subcommand_required prevents `None`"),
     }
 }

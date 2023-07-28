@@ -1,15 +1,14 @@
 use std::io::{Cursor, Read};
 use std::{io::Error, path::PathBuf};
 
-use base64_stream::ToBase64Reader;
-
+use super::responses::{AnalysisReportData, ErrorResponse};
 use crate::antivirus::responses::{AnalysisIdResponse, AnalysisReportResponse};
 use crate::file_as_bytes;
+use base64_stream::ToBase64Reader;
 use custom_error::custom_error;
+use dotenv_codegen::dotenv;
 use reqwest::{self, multipart};
 use serde_json::Error as SerdeError;
-const API_KEY: &str = "XXX";
-use super::responses::{AnalysisReportData, ErrorResponse};
 
 custom_error! {pub AntivirusError
     Io{source: Error} = "{source}",
@@ -49,6 +48,7 @@ pub async fn is_dangerous(file_path: &PathBuf) -> Result<bool, AntivirusError> {
 }
 
 async fn get_analysis_id(file_path: &PathBuf) -> Result<String, AntivirusError> {
+    const API_KEY: &str = dotenv!("VIRUSTOTAL_API_KEY");
     const URL: &str = "https://www.virustotal.com/api/v3/files";
     let client = reqwest::Client::new();
     let body = file_to_base64(file_path)?;
@@ -88,6 +88,7 @@ async fn get_analysis_id(file_path: &PathBuf) -> Result<String, AntivirusError> 
 }
 
 async fn get_analysis_report(id: &str) -> Result<AnalysisReportData, AntivirusError> {
+    const API_KEY: &str = dotenv!("VIRUSTOTAL_API_KEY");
     let url = String::from("https://www.virustotal.com/api/v3/analyses/") + id;
     let client = reqwest::Client::new();
 
