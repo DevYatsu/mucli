@@ -27,6 +27,7 @@ pub fn generate_encryption_key(length: usize) -> Vec<u8> {
     rand::thread_rng().fill_bytes(&mut key);
     key
 }
+
 pub fn get_config_path() -> Result<PathBuf, GenericError> {
     let home_dir = dirs::home_dir().ok_or(GenericError::Custom {
         message: "Cannot access home dir".to_string(),
