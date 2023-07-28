@@ -1,12 +1,10 @@
-mod annex;
+use crate::utils::GenericError;
 
-use std::path::PathBuf;
+use std::{path::PathBuf, fs};
 
 use clap::ArgMatches;
 
 use crate::{print_err, print_success};
-
-use self::annex::rename;
 
 pub fn rename_command(sub_matches: &ArgMatches) {
     if let Some(filepath) = sub_matches.get_one::<PathBuf>("FILEPATH") {
@@ -24,4 +22,19 @@ pub fn rename_command(sub_matches: &ArgMatches) {
             }
         }
     }
+}
+
+pub fn rename(source_path: &PathBuf, name: &PathBuf) -> Result<(), GenericError> {
+    if source_path == name {
+        return Err(GenericError::Custom {
+            message: format!("Target is already named {:?}", name),
+        });
+    }
+
+    if let Some(path_to_dir) = source_path.parent() {
+        fs::rename(source_path, path_to_dir.join(name))?;
+    } else {
+        fs::rename(source_path, name)?;
+    }
+    Ok(())
 }
