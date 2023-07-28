@@ -24,7 +24,7 @@ pub fn rename_command(sub_matches: &ArgMatches) {
     }
 }
 
-pub fn rename(source_path: &PathBuf, name: &PathBuf) -> Result<(), GenericError> {
+fn rename(source_path: &PathBuf, name: &PathBuf) -> Result<(), GenericError> {
     if source_path == name {
         return Err(GenericError::Custom {
             message: format!("Target is already named {:?}", name),

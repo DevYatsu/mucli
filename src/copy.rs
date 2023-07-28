@@ -14,7 +14,7 @@ pub fn copy_command(sub_matches: &ArgMatches) {
     }
 }
 
-pub fn copy(source_path: &PathBuf, target: &PathBuf) -> Result<(), GenericError> {
+fn copy(source_path: &PathBuf, target: &PathBuf) -> Result<(), GenericError> {
     if source_path == target && source_path.is_file() {
         return Err(GenericError::Custom {
             message: "Cannot copy target inside itself".to_string(),

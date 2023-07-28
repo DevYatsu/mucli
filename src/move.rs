@@ -26,7 +26,7 @@ pub fn move_command(sub_matches: &ArgMatches) {
     }
 }
 
-pub fn mv(source_path: &PathBuf, target_dir: &PathBuf) -> Result<(), GenericError> {
+fn mv(source_path: &PathBuf, target_dir: &PathBuf) -> Result<(), GenericError> {
     if source_path == target_dir {
         return Err(GenericError::Custom {
             message: "Source must be different from target".to_string(),

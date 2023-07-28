@@ -155,7 +155,7 @@ pub fn extract_command(sub_matches: &ArgMatches) {
     }
 }
 
-pub fn create_zip(
+fn create_zip(
     source_path: &PathBuf,
     output_path: &PathBuf,
     compression_level: Option<i32>,
@@ -215,7 +215,7 @@ pub fn create_zip(
     Ok(())
 }
 
-pub fn extract_zip(source_path: &PathBuf, output_dir: &PathBuf) -> Result<(), CompressionError> {
+fn extract_zip(source_path: &PathBuf, output_dir: &PathBuf) -> Result<(), CompressionError> {
     let source_file = File::open(source_path)?;
 
     let mut archive = zip::ZipArchive::new(source_file)?;
