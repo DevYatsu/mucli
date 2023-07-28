@@ -182,9 +182,6 @@ mucli update
 
 ## Ideas of commands to implement in the future
 
-- "processes": Create a command to view running processes and manage them, allowing users to terminate or prioritize tasks.
-- "system-info": Develop a command to provide essential system information, including CPU, memory, disk usage, and OS details.
-- "currency": Create a command to convert between different currencies, using up-to-date exchange rates.
 - "dictionary": Develop a command-line dictionary tool to look up word definitions, synonyms, and antonyms.
 - "translator": Implement a command to translate text between different languages using popular translation APIs.
 - "random": Create a command to generate random numbers, passwords, or strings.
