@@ -3,9 +3,8 @@ use std::path::PathBuf;
 
 use clap::ArgMatches;
 
-use crate::{print_err, print_success};
 use crate::utils::GenericError;
-
+use crate::{print_err, print_success};
 
 pub fn move_command(sub_matches: &ArgMatches) {
     if let Some(filepath) = sub_matches.get_one::<PathBuf>("FILEPATH") {
@@ -71,4 +70,3 @@ pub fn mv(source_path: &PathBuf, target_dir: &PathBuf) -> Result<(), GenericErro
 
     Ok(())
 }
-

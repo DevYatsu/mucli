@@ -1,6 +1,6 @@
 use crate::utils::GenericError;
 
-use std::{path::PathBuf, fs};
+use std::{fs, path::PathBuf};
 
 use clap::ArgMatches;
 

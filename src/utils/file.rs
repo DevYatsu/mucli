@@ -3,7 +3,6 @@ use std::{
     io::{Read, Write},
     path::PathBuf,
 };
-
 const HEADER_MARKER: [u8; 4] = [0xAA, 0xBB, 0xCC, 0xDD];
 const HEADER_SIZE: usize = 4;
 const VERSION_SIZE: usize = 4;
@@ -30,6 +29,8 @@ macro_rules! file_as_str {
 #[macro_export]
 macro_rules! file_as_bytes {
     ($name: expr) => {{
+        use std::io::Read;
+
         let mut file = std::fs::OpenOptions::new()
             .read(true)
             .write(true)

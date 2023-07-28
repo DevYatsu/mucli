@@ -1,16 +1,16 @@
-use crate::{print_solution};
+use crate::file_as_bytes;
+use crate::print_solution;
+use crate::{print_err, print_success};
+use clap::ArgMatches;
+use custom_error::custom_error;
 use std::{
     env::current_dir,
     fs::{self, File},
-    io::{Error, Write, self},
+    io::{self, Error, Write},
     path::{Path, PathBuf},
 };
-use clap::ArgMatches;
 use zip::result::ZipError;
-use crate::file_as_bytes;
 use zip::{write::FileOptions, ZipWriter};
-use custom_error::custom_error;
-use crate::{print_err, print_success};
 
 custom_error! {pub CompressionError
     Io{source: Error} = "{source}",
