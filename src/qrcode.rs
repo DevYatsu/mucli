@@ -1,5 +1,5 @@
 use clap::ArgMatches;
-use dialoguer::{theme::ColorfulTheme, Input, Password, Select};
+use dialoguer::{theme::ColorfulTheme, Input, Select};
 use itertools::Itertools;
 use qrcode::QrCode;
 use wifi_qr_code::{AuthenticationType, Visibility, WifiCredentials};
@@ -51,9 +51,9 @@ pub fn qrcode_command(sub_matches: &ArgMatches) {
                 .with_prompt("Wifi Name")
                 .interact_text()
                 .unwrap();
-            let wifi_password = Password::with_theme(&ColorfulTheme::default())
+            let wifi_password = Input::with_theme(&ColorfulTheme::default())
                 .with_prompt("Wifi password")
-                .interact()
+                .interact_text()
                 .unwrap();
 
             WifiCredentials {
